@@ -65,7 +65,7 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 
-const server_url = "http://localhost:8000";
+const server_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const peerConfigConnections = {
     "iceServers": [

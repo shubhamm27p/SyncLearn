@@ -59,10 +59,9 @@ jobs:
       - name: Install Backend Dependencies
         run: npm install
 
-      # Currently there are no tests in the backend, but this step ensures 
-      # the dependencies resolve correctly and the app can at least be initialized
-      - name: Verify Backend Modules
-        run: node -e "require('express'); require('@supabase/supabase-js');"
+      # Run the automated backend security and auth tests
+      - name: Run Backend Tests
+        run: npm test
 
   deploy:
     name: Trigger Deployments

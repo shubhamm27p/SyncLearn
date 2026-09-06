@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext({});
 
-const serverUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const serverUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const client = axios.create({
     baseURL: `${serverUrl}/api/v1/users`
