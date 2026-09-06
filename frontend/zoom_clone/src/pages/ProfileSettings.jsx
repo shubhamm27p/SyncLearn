@@ -150,7 +150,7 @@ export default function ProfileSettings() {
     let errors = {};
     if (!fullName.trim()) errors.fullName = "Full name is required";
     if (!email.trim()) errors.email = "Email is required";
-    else if (!/^\\S+@\\S+\\.\\S+$/.test(email)) errors.email = "Invalid email format";
+    else if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = "Invalid email format";
     if (!username.trim()) errors.username = "Username is required";
 
     if (Object.keys(errors).length > 0) {

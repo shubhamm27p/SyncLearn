@@ -137,7 +137,7 @@ export default function Authentication() {
     } else if (formState === 1) {
       if (!name) errors.name = "Full Name is required";
       if (!username) errors.username = "Email/Username is required";
-      else if (username.includes('@') && !/^\\S+@\\S+\\.\\S+$/.test(username)) {
+      else if (username.includes('@') && !/^\S+@\S+\.\S+$/.test(username)) {
         errors.username = "Invalid email format";
       }
       if (!password) errors.password = "Password is required";
