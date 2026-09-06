@@ -7,10 +7,10 @@
 PORT=8000
 
 # Your Supabase Project URL (e.g. https://xyz.supabase.co)
-SUPABASE_URL=your-supabase-project-url
+SUPABASE_URL=https://kudofovokysyoitqkigs.supabase.co
 
 # Your Supabase Project Anon/Public Key
-SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_ANON_KEY=sb_publishable_uNGy_gftyat-t-rsP6C-kA_PZE6sJmu
 
 # The URL of your Vercel Frontend (Used for CORS restrictions)
 # For local development: http://localhost:5173
