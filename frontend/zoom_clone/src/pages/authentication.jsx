@@ -157,7 +157,7 @@ export default function Authentication() {
       let errMsg = err.response?.data?.message;
       if (!errMsg) {
         if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
-          errMsg = 'Network Error: Cannot reach server. Please ensure backend is running on http://localhost:8000.';
+          errMsg = 'Network Error: Cannot reach the backend server. Please check your internet connection or backend status.';
         } else {
           errMsg = err.message || 'An error occurred';
         }
