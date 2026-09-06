@@ -40,9 +40,21 @@ const flushQuizSubmissionsToDB = async (roomKey, quizState) => {
 };
 
 export const connectToSocket = (server) => {
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'https://sync-learn.vercel.app',
+        'https://synclearn-backend.onrender.com'
+    ];
+
     const io = new Server(server, {
         cors: {
-            origin: "*",
+            origin: function (origin, callback) {
+                if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+                    callback(null, true);
+                } else {
+                    callback(new Error('Not allowed by CORS'));
+                }
+            },
             methods: ["GET", "POST"],
             allowedHeaders: ["*"],
             credentials: true

@@ -394,7 +394,7 @@ export default function VideoMeetComponent() {
 
         socketRef.current.on("connect", () => {
             socketIdRef.current = socketRef.current.id;
-            socketRef.current.emit("join-call", window.location.pathname, {
+            socketRef.current.emit("join-call", meetingCode, {
                 username: username || `User_${socketRef.current.id?.substring(0, 4)}`,
                 role: userRole
             });
