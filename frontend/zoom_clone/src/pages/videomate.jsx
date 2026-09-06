@@ -62,7 +62,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import StarIcon from '@mui/icons-material/Star';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 
 const server_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -258,7 +258,8 @@ export default function VideoMeetComponent() {
         };
     }, [infoPopoverOpen]);
 
-    const meetingCode = window.location.pathname.split('/').pop() || "demo";
+    const { url } = useParams();
+    const meetingCode = url || "demo";
 
     const getPermission = async () => {
         try {
