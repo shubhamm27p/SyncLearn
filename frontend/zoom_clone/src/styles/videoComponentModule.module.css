@@ -1,0 +1,377 @@
+.meetVideoContainer {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+    background-color: #121212;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Lobby Styling */
+.lobbyContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0b132b 0%, #1c2541 100%);
+    padding: 20px;
+}
+
+.lobbyCard {
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.lobbyCard h2 {
+    margin: 0;
+    color: #0b132b;
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.lobbyVideoPreview {
+    width: 100%;
+    height: 240px;
+    background-color: #1a1a1a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.lobbyVideoPreview video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lobbyForm {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Meeting View Styling */
+.meetUserVideo {
+    position: absolute;
+    bottom: 90px;
+    left: 20px;
+    height: 180px;
+    width: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    z-index: 25;
+    background: #000;
+    transition: all 0.3s ease;
+}
+
+.conferenceView {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    padding: 70px 20px 90px 20px;
+    gap: 16px;
+    overflow-y: auto;
+    z-index: 1;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.conferenceViewShifted {
+    padding-right: 380px;
+}
+
+.videoWrapper {
+    position: relative;
+    width: 440px;
+    max-width: 90vw;
+    height: 280px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #1a1a1a;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 1;
+}
+
+.videoWrapper video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hostControlsOverlay {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    padding: 4px 8px;
+    border-radius: 20px;
+    z-index: 10;
+}
+
+.topInfoContainer {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 100;
+}
+
+.infoPopoverCard {
+    animation: fadeInSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Floating Control Bar */
+.buttonContainers {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 10px 22px;
+    border-radius: 40px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    z-index: 40;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.buttonContainersShifted {
+    left: calc(50% - 180px);
+}
+
+.buttonContainers button {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.buttonContainers button:hover {
+    transform: scale(1.1);
+}
+
+/* Docked Right Chat Sidebar Mechanics */
+.chatRoom {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    background-color: #1a1a1c;
+    border-left: 1px solid #2e2e32;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.chatContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chatHeaderBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: #242426;
+    border-bottom: 1px solid #2d2d30;
+}
+
+.chatHeaderTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.chattingDisplay {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #1a1a1c;
+}
+
+.chattingDisplay::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chattingDisplay::-webkit-scrollbar-thumb {
+    background: #3a3a3c;
+    border-radius: 4px;
+}
+
+.chattingDisplay::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chatMessage {
+    background: #2a2a2d;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #3a3a3e;
+    align-self: flex-start;
+    max-width: 90%;
+}
+
+.chatMessageSelf {
+    background: #1e3a5f;
+    border-color: #2b5288;
+    align-self: flex-end;
+}
+
+.chatSenderRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.chatSender {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #38bdf8;
+}
+
+.chatSenderSelf {
+    color: #60a5fa;
+}
+
+.chatTime {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.chatData {
+    font-size: 0.9rem;
+    color: #f1f5f9;
+    word-break: break-word;
+    white-space: pre-wrap;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.chattingAreaDocked {
+    padding: 16px 16px 20px 16px;
+    background-color: #1e1e20;
+    border-top: 1px solid #2d2d30;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chatRecipientBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* MCQ Creation Form Styling */
+.mcqFormLabel {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #e1e1e6;
+    margin-bottom: 6px;
+}
+
+.mcqFormTextarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+    background-color: #1a1a1d;
+    color: #ffffff;
+    font-size: 15px;
+    font-family: inherit;
+    border: 1px solid #3a3a40;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mcqFormTextarea::placeholder {
+    color: #71717a;
+}
+
+.mcqFormTextarea:focus {
+    border-color: #0e71eb;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(14, 113, 235, 0.2);
+}
+
+.mcqFormInput {
+    width: 100%;
+    background-color: #1a1a1d;
+    color: #ffffff;
+    font-size: 15px;
+    font-family: inherit;
+    border: 1px solid #3a3a40;
+    border-radius: 6px;
+    padding: 10px 12px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mcqFormInput::placeholder {
+    color: #71717a;
+}
+
+.mcqFormInput:focus {
+    border-color: #0e71eb;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(14, 113, 235, 0.2);
+}
