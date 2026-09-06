@@ -6,6 +6,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import HistoryIcon from '@mui/icons-material/History';
 
 export default function History() {
     const { getHistoryOfUser } = useContext(AuthContext);
@@ -147,14 +148,20 @@ export default function History() {
                         })}
                     </Grid>
                 ) : (
-                    <Paper elevation={0} sx={{ textAlign: 'center', py: 8, px: 3, backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)' }}>
-                        <Typography variant="h6" sx={{ color: '#475569', mb: 2 }}>
-                            No meeting history found yet.
+                    <Paper elevation={0} sx={{ textAlign: 'center', py: 10, px: 3, backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                            <HistoryIcon sx={{ fontSize: 64, color: '#9ca3af' }} />
+                        </Box>
+                        <Typography variant="h6" sx={{ color: '#475569', mb: 1, fontWeight: 'bold' }}>
+                            No meeting history found yet
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#6b7280', mb: 3 }}>
+                            When you join or create a meeting, it will appear here.
                         </Typography>
                         <Button
                             variant="contained"
                             onClick={() => routeTo("/home")}
-                            sx={{ backgroundColor: '#0e71eb', '&:hover': { backgroundColor: '#0b5ed7' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 3, py: 1 }}
+                            sx={{ backgroundColor: '#0e71eb', '&:hover': { backgroundColor: '#0b5ed7' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px', px: 4, py: 1.2 }}
                         >
                             Start a Meeting
                         </Button>

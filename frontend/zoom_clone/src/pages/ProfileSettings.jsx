@@ -20,7 +20,8 @@ import {
   Snackbar,
   Alert,
   LinearProgress,
-  Divider
+  Divider,
+  CircularProgress
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import SecurityIcon from "@mui/icons-material/Security";
@@ -32,8 +33,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
+import toast from "react-hot-toast";
 
 const labelSx = {
   display: "block",
@@ -75,7 +76,12 @@ export default function ProfileSettings() {
   const { currentUser, userRole } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState(0); // 0: Profile, 1: Security, 2: Preferences
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
+  
+  // Loading & Validation States
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [profileErrors, setProfileErrors] = useState({});
+  const [passwordErrors, setPasswordErrors] = useState({});
 
   // General Profile State
   const [fullName, setFullName] = useState(currentUser?.name || "Alex Morgan");
@@ -139,12 +145,23 @@ export default function ProfileSettings() {
     setTotalTestsTaken(savedSubmissions.length);
   }, []);
 
-  // Save General Profile
-  const handleSaveProfile = () => {
-    if (!fullName.trim() || !email.trim()) {
-      setSnackbar({ open: true, message: "Name and Email fields cannot be empty.", severity: "warning" });
+  const handleSaveProfile = async () => {
+    setProfileErrors({});
+    let errors = {};
+    if (!fullName.trim()) errors.fullName = "Full name is required";
+    if (!email.trim()) errors.email = "Email is required";
+    else if (!/^\\S+@\\S+\\.\\S+$/.test(email)) errors.email = "Invalid email format";
+    if (!username.trim()) errors.username = "Username is required";
+
+    if (Object.keys(errors).length > 0) {
+      setProfileErrors(errors);
+      toast.error("Please fix the highlighted errors in your profile.");
       return;
     }
+
+    setIsSavingProfile(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     const profileData = {
       fullName,
@@ -156,7 +173,8 @@ export default function ProfileSettings() {
     };
 
     localStorage.setItem("viora_user_profile_db", JSON.stringify(profileData));
-    setSnackbar({ open: true, message: "Profile details saved successfully!", severity: "success" });
+    toast.success("Profile details saved successfully!");
+    setIsSavingProfile(false);
   };
 
   // Avatar Upload Handler
@@ -166,7 +184,7 @@ export default function ProfileSettings() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarUrl(reader.result);
-        setSnackbar({ open: true, message: "Avatar picture updated!", severity: "info" });
+        toast.success("Avatar picture updated!");
       };
       reader.readAsDataURL(file);
     }
@@ -186,25 +204,29 @@ export default function ProfileSettings() {
     return { score, label: "Strong", color: "#10b981" };
   };
 
-  // Update Password
-  const handleUpdatePassword = () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setSnackbar({ open: true, message: "Please fill in all password fields.", severity: "warning" });
+  const handleUpdatePassword = async () => {
+    setPasswordErrors({});
+    let errors = {};
+    if (!currentPassword) errors.currentPassword = "Required";
+    if (!newPassword) errors.newPassword = "Required";
+    else if (newPassword.length < 8) errors.newPassword = "Must be at least 8 characters long";
+    if (!confirmPassword) errors.confirmPassword = "Required";
+    else if (newPassword !== confirmPassword) errors.confirmPassword = "Passwords do not match";
+
+    if (Object.keys(errors).length > 0) {
+      setPasswordErrors(errors);
+      toast.error("Please fix the errors to update your password.");
       return;
     }
-    if (newPassword.length < 8) {
-      setSnackbar({ open: true, message: "New password must be at least 8 characters long.", severity: "error" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setSnackbar({ open: true, message: "New password and confirmation do not match.", severity: "error" });
-      return;
-    }
+
+    setIsUpdatingPassword(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-    setSnackbar({ open: true, message: "Password updated successfully!", severity: "success" });
+    toast.success("Password updated successfully!");
+    setIsUpdatingPassword(false);
   };
 
   // Save System Preferences
@@ -219,19 +241,18 @@ export default function ProfileSettings() {
     };
 
     localStorage.setItem("viora_user_settings_db", JSON.stringify(prefsData));
-    setSnackbar({ open: true, message: "System preferences saved successfully!", severity: "success" });
+    toast.success("System preferences saved successfully!");
   };
 
-  // Danger Zone Action Execution
   const handleExecuteDangerAction = () => {
     if (dangerActionType === "reset") {
       localStorage.removeItem("viora_user_profile_db");
       localStorage.removeItem("viora_user_settings_db");
       localStorage.removeItem("viora_test_submissions_db");
-      setSnackbar({ open: true, message: "Account data and test history reset.", severity: "info" });
+      toast.success("Account data and test history reset.");
     } else if (dangerActionType === "delete") {
       localStorage.clear();
-      setSnackbar({ open: true, message: "Account deleted. Logging out...", severity: "error" });
+      toast.error("Account deleted. Logging out...");
       setTimeout(() => navigate("/auth"), 1500);
     }
     setDangerModalOpen(false);
@@ -362,6 +383,8 @@ export default function ProfileSettings() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       sx={inputSx}
+                      error={!!profileErrors.fullName}
+                      helperText={profileErrors.fullName}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -372,6 +395,8 @@ export default function ProfileSettings() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       sx={inputSx}
+                      error={!!profileErrors.username}
+                      helperText={profileErrors.username}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -382,6 +407,8 @@ export default function ProfileSettings() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       sx={inputSx}
+                      error={!!profileErrors.email}
+                      helperText={profileErrors.email}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -412,9 +439,10 @@ export default function ProfileSettings() {
                 <Button
                   variant="contained"
                   onClick={handleSaveProfile}
+                  disabled={isSavingProfile}
                   sx={{ bgcolor: "#0e71eb", "&:hover": { bgcolor: "#0b5ed7" }, fontWeight: 600, borderRadius: "8px", mt: 3, px: 4, py: 1.2, textTransform: "none" }}
                 >
-                  Save Profile Changes
+                  {isSavingProfile ? <CircularProgress size={24} color="inherit" /> : "Save Profile Changes"}
                 </Button>
               </Paper>
             </Grid>
@@ -477,6 +505,8 @@ export default function ProfileSettings() {
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       sx={inputSx}
+                      error={!!passwordErrors.currentPassword}
+                      helperText={passwordErrors.currentPassword}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -488,6 +518,8 @@ export default function ProfileSettings() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       sx={inputSx}
+                      error={!!passwordErrors.newPassword}
+                      helperText={passwordErrors.newPassword}
                     />
                     {newPassword && (
                       <Box sx={{ mt: 1 }}>
@@ -514,6 +546,8 @@ export default function ProfileSettings() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       sx={inputSx}
+                      error={!!passwordErrors.confirmPassword}
+                      helperText={passwordErrors.confirmPassword}
                     />
                   </Grid>
                 </Grid>
@@ -521,9 +555,10 @@ export default function ProfileSettings() {
                 <Button
                   variant="contained"
                   onClick={handleUpdatePassword}
+                  disabled={isUpdatingPassword}
                   sx={{ bgcolor: "#0e71eb", "&:hover": { bgcolor: "#0b5ed7" }, fontWeight: 600, borderRadius: "8px", mt: 3, px: 4, py: 1.2, textTransform: "none" }}
                 >
-                  Update Password
+                  {isUpdatingPassword ? <CircularProgress size={24} color="inherit" /> : "Update Password"}
                 </Button>
               </Paper>
 
@@ -565,7 +600,7 @@ export default function ProfileSettings() {
                     variant="outlined"
                     color="error"
                     onClick={() => {
-                      setSnackbar({ open: true, message: "Logged out of all other device sessions.", severity: "info" });
+                      toast.success("Logged out of all other device sessions.");
                     }}
                     sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
                   >
@@ -749,15 +784,7 @@ export default function ProfileSettings() {
           </DialogActions>
         </Dialog>
 
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-          <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+
       </Container>
     </Box>
   );

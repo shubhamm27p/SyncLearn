@@ -17,7 +17,8 @@ import {
   DialogActions,
   Divider,
   Select,
-  MenuItem
+  MenuItem,
+  CircularProgress
 } from '@mui/material';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import Visibility from '@mui/icons-material/Visibility';
@@ -27,6 +28,7 @@ import LockResetIcon from '@mui/icons-material/LockReset';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
+import toast from 'react-hot-toast';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
@@ -93,6 +95,8 @@ export default function Authentication() {
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // Password reset state
   const [resetToken, setResetToken] = useState('');
@@ -123,6 +127,36 @@ export default function Authentication() {
   } = useContext(AuthContext);
 
   const handleAuth = async () => {
+    setFieldErrors({});
+    setError('');
+    let errors = {};
+    
+    if (formState === 0) {
+      if (!username) errors.username = "Username/Email is required";
+      if (!password) errors.password = "Password is required";
+    } else if (formState === 1) {
+      if (!name) errors.name = "Full Name is required";
+      if (!username) errors.username = "Email/Username is required";
+      else if (username.includes('@') && !/^\\S+@\\S+\\.\\S+$/.test(username)) {
+        errors.username = "Invalid email format";
+      }
+      if (!password) errors.password = "Password is required";
+      else if (password.length < 6) errors.password = "Password must be at least 6 characters";
+    } else if (formState === 2) {
+      if (!username) errors.username = "Username/Email is required";
+    } else if (formState === 3) {
+      if (!resetToken) errors.resetToken = "Reset code is required";
+      if (!newPassword) errors.newPassword = "New password is required";
+      else if (newPassword.length < 6) errors.newPassword = "Password must be at least 6 characters";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast.error("Please fix the highlighted errors in the form.");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (formState === 0) {
         let result = await handleLogin(username, password);
@@ -163,12 +197,15 @@ export default function Authentication() {
         }
       }
       setError(errMsg);
+      toast.error(errMsg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleAuthSubmit = async () => {
     if (!googleEmail.trim()) {
-      setError('Please enter a valid Google email address');
+      toast.error('Please enter a valid Google email address');
       return;
     }
     try {
@@ -184,6 +221,7 @@ export default function Authentication() {
       routeTo('/home');
     } catch (err) {
       console.error(err);
+      toast.error(err.response?.data?.message || 'Google Sign-In failed');
       setError(err.response?.data?.message || 'Google Sign-In failed');
     }
   };
@@ -327,6 +365,8 @@ export default function Authentication() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     sx={inputSx}
+                    error={!!fieldErrors.name}
+                    helperText={fieldErrors.name}
                   />
                 </Box>
                 <Box sx={{ mb: 2 }}>
@@ -410,6 +450,8 @@ export default function Authentication() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   sx={inputSx}
+                  error={!!fieldErrors.username}
+                  helperText={fieldErrors.username}
                 />
               </Box>
             )}
@@ -438,6 +480,8 @@ export default function Authentication() {
                       },
                     }}
                     sx={inputSx}
+                    error={!!fieldErrors.resetToken}
+                    helperText={fieldErrors.resetToken}
                   />
                 </Box>
                 <Box sx={{ mb: 2 }}>
@@ -471,6 +515,8 @@ export default function Authentication() {
                       },
                     }}
                     sx={inputSx}
+                    error={!!fieldErrors.newPassword}
+                    helperText={fieldErrors.newPassword}
                   />
                 </Box>
               </>
@@ -509,6 +555,8 @@ export default function Authentication() {
                     },
                   }}
                   sx={inputSx}
+                  error={!!fieldErrors.password}
+                  helperText={fieldErrors.password}
                 />
 
                 {formState === 0 && (
@@ -564,11 +612,16 @@ export default function Authentication() {
                 boxShadow: '0 4px 14px rgba(14, 113, 235, 0.25)'
               }}
               onClick={handleAuth}
+              disabled={isLoading}
             >
-              {formState === 0 && 'Sign In'}
-              {formState === 1 && 'Create Account'}
-              {formState === 2 && 'Send Reset Code to Email'}
-              {formState === 3 && 'Reset Password'}
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : (
+                <>
+                  {formState === 0 && 'Sign In'}
+                  {formState === 1 && 'Create Account'}
+                  {formState === 2 && 'Send Reset Code to Email'}
+                  {formState === 3 && 'Reset Password'}
+                </>
+              )}
             </Button>
 
             {(formState === 2 || formState === 3) && (

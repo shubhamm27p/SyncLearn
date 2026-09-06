@@ -11,16 +11,23 @@ import AddIcon from '@mui/icons-material/Add';
 import QuizIcon from '@mui/icons-material/Quiz';
 import PersonIcon from '@mui/icons-material/Person';
 import { AuthContext } from '../contents/AuthContents';
+import toast from 'react-hot-toast';
 
 function HomeComponent() {
     let navigate = useNavigate();
     const [meetingCode, setMeetingCode] = useState("");
+    const [meetingCodeError, setMeetingCodeError] = useState("");
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
 
     const { addToUserHistory } = useContext(AuthContext);
 
     let handleJoinVideoCall = async () => {
-        if (!meetingCode.trim()) return;
+        if (!meetingCode.trim()) {
+            setMeetingCodeError("Please enter a meeting code");
+            toast.error("Please enter a meeting code to join.");
+            return;
+        }
+        setMeetingCodeError("");
         try {
             await addToUserHistory(meetingCode);
         } catch (err) {
@@ -209,12 +216,17 @@ function HomeComponent() {
                         </Button>
 
                         {/* Meeting Code Input Group */}
-                        <Box sx={{ display: "flex", gap: 1.5 }}>
+                        <Box sx={{ display: "flex", gap: 1.5, alignItems: 'flex-start' }}>
                             <TextField 
-                                onChange={(e) => setMeetingCode(e.target.value)} 
+                                onChange={(e) => {
+                                    setMeetingCode(e.target.value);
+                                    if(meetingCodeError) setMeetingCodeError("");
+                                }} 
                                 placeholder="Enter Meeting Code" 
                                 variant="outlined" 
                                 value={meetingCode}
+                                error={!!meetingCodeError}
+                                helperText={meetingCodeError}
                                 sx={{
                                     flex: 1,
                                     "& .MuiOutlinedInput-root": {

@@ -10,6 +10,8 @@ import AppTheme from './shared-theme/AppTheme';
 
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
+import NotFound from './pages/NotFound.jsx';
+import { Toaster } from 'react-hot-toast';
 
 // MCQ Engine Components & Pages
 import DashboardLayout from './mcq_engine/components/DashboardLayout.jsx';
@@ -41,6 +43,7 @@ function App() {
   return (
     <AppTheme>
       <div className="App">
+        <Toaster position="top-center" />
         <Router>
           <AuthProvider> 
             <Routes>
@@ -83,6 +86,7 @@ function App() {
               <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
 
               <Route path="/:url" element={<VideoMeetComponent />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
         </Router>
