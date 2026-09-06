@@ -71,7 +71,22 @@ const peerConfigConnections = {
     "iceServers": [
         { "urls": "stun:stun.l.google.com:19302" },
         { "urls": "stun:stun1.l.google.com:19302" },
-        { "urls": "stun:stun2.l.google.com:19302" }
+        { "urls": "stun:stun2.l.google.com:19302" },
+        {
+            "urls": "turn:openrelay.metered.ca:80",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        },
+        {
+            "urls": "turn:openrelay.metered.ca:443",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        },
+        {
+            "urls": "turn:openrelay.metered.ca:443?transport=tcp",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        }
     ]
 };
 
@@ -373,13 +388,13 @@ export default function VideoMeetComponent() {
     };
 
     let connectToSocketServer = () => {
-        socketRef.current = io.connect(server_url, { secure: false });
+        socketRef.current = io.connect(server_url);
 
         socketRef.current.on('signal', gotMessageFromServer);
 
         socketRef.current.on("connect", () => {
             socketIdRef.current = socketRef.current.id;
-            socketRef.current.emit("join-call", window.location.href, {
+            socketRef.current.emit("join-call", window.location.pathname, {
                 username: username || `User_${socketRef.current.id?.substring(0, 4)}`,
                 role: userRole
             });
