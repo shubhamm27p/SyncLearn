@@ -1,11 +1,12 @@
 import express from "express";
 import { createServer } from "node:http";
-import { Server } from "socket.io";
-import mongoose from "mongoose";
 import cors from "cors";
-import dns from "node:dns";
+import helmet from "helmet";
 import { connectToSocket } from "./controllers/socketmanager.js";
 import userRouter from "./routes/usersRouter.js";
+import { supabase } from "./utils/supabase.js";
+import { globalLimiter } from "./middlewares/rateLimiter.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
 // Load environment variables from .env if present
 try {
@@ -14,44 +15,72 @@ try {
     // .env file optional
 }
 
-// Set DNS servers to ensure MongoDB SRV records resolve properly on Windows
-try {
-    dns.setServers(["8.8.8.8", "8.8.4.4"]);
-} catch (e) {
-    console.warn("Could not set DNS servers:", e.message);
-}
+// ---------------------------------------------------------
+// High Net Crashdown Limiter: Process Level Exception Catchers
+// Prevent the server from hard crashing on unexpected errors
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION! Shutting down gracefully...');
+    console.error(err.name, err.message, err.stack);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION! Shutting down gracefully...');
+    console.error(err.name, err.message, err.stack);
+    process.exit(1);
+});
+// ---------------------------------------------------------
 
 const app = express();
-
 const server = createServer(app);
+
 const io = connectToSocket(server);
 
 app.set("port", (process.env.PORT || 8000));
-app.use(cors());
+
+// ---------------------------------------------------------
+// Security Middlewares
+// 1. Helmet: Secures HTTP headers
+app.use(helmet());
+
+// 2. Global Rate Limiter: Limits requests from a single IP
+app.use(globalLimiter);
+// ---------------------------------------------------------
+
+// Restrict CORS for Production (Vercel Frontend)
+const allowedOrigins = process.env.NODE_ENV === "production" && process.env.FRONTEND_URL 
+    ? [process.env.FRONTEND_URL] 
+    : "*";
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
+
 app.use(express.json({limit: "49kb"}));
 app.use(express.urlencoded({limit: "40kb", extended: true}));
 
+// Routes
 app.use("/api/v1/users", userRouter);
 
-server.listen(app.get("port"), () => {
-    console.log(`Server listening on port ${app.get("port")}`);
-});
+// Global Error Handler Middleware
+app.use(errorHandler);
 
-const connectDB = async () => {
-    try {
-        const mongoUrl = process.env.MONGO_URL || "mongodb://127.0.0.1:27017/viora";
-        const connectionDb = await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 3000 });
-        console.log(`MONGO connected DB host: ${connectionDb.connection.host}`);
-    } catch (err) {
-        console.error("MongoDB Connection Error:", err.message);
+// Export app for testing purposes
+export { app };
+
+// Start Server if not imported by tests
+if (process.env.NODE_ENV !== 'test') {
+    server.listen(app.get("port"), async () => {
+        console.log(`Server listening on port ${app.get("port")}`);
+        
+        // Verify Supabase Connection
         try {
-            console.log("Attempting fallback to local MongoDB...");
-            const fallbackDb = await mongoose.connect("mongodb://127.0.0.1:27017/viora", { serverSelectionTimeoutMS: 3000 });
-            console.log(`MONGO connected to local DB host: ${fallbackDb.connection.host}`);
-        } catch (fallbackErr) {
-            console.error("Local MongoDB Fallback Error:", fallbackErr.message);
+            const { data, error } = await supabase.from('users').select('id').limit(1);
+            if (error) throw error;
+            console.log("Supabase connection established successfully.");
+        } catch (err) {
+            console.error("Supabase Connection Error:", err.message);
         }
-    }
-};
-
-connectDB();
+    });
+}

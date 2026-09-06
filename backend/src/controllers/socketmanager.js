@@ -1,7 +1,5 @@
 import { Server } from "socket.io";
-import { Quiz } from "../models/quizModel.js";
-import { Submission } from "../models/submissionModel.js";
-import { MediaPermission } from "../models/mediaPermissionModel.js";
+import { supabase } from "../utils/supabase.js";
 
 let connections = {};
 let messages = {};
@@ -21,19 +19,20 @@ const flushQuizSubmissionsToDB = async (roomKey, quizState) => {
 
     try {
         const submissionDocs = responses.map((resp) => ({
-            quizId: quizState.id,
-            meetingId: roomKey,
-            studentUsername: resp.studentUsername,
-            studentName: resp.studentName || resp.studentUsername,
-            selectedOptionIndex: resp.selectedOptionIndex,
-            isCorrect: resp.isCorrect,
-            scoreEarned: resp.isCorrect ? (quizState.points || 1) : 0,
-            latencyMs: resp.latencyMs || 0,
-            submittedAt: resp.submittedAt || new Date()
+            quiz_id: quizState.id,
+            meeting_id: roomKey,
+            student_username: resp.studentUsername,
+            student_name: resp.studentName || resp.studentUsername,
+            selected_option_index: resp.selectedOptionIndex,
+            is_correct: resp.isCorrect,
+            score_earned: resp.isCorrect ? (quizState.points || 1) : 0,
+            latency_ms: resp.latencyMs || 0,
+            submitted_at: resp.submittedAt || new Date().toISOString()
         }));
 
         // Bulk insert to database without blocking real-time socket loops
-        await Submission.insertMany(submissionDocs, { ordered: false });
+        const { error } = await supabase.from('submissions').insert(submissionDocs);
+        if (error) throw error;
         console.log(`[Async Flush] Successfully flushed ${submissionDocs.length} responses for quiz ${quizState.id} to DB.`);
     } catch (err) {
         console.error(`[Async Flush Error] Failed to flush quiz submissions for room ${roomKey}:`, err.message);
@@ -130,11 +129,14 @@ export const connectToSocket = (server) => {
         socket.on("admin:toggle-media-permission", async ({ sessionId, targetSocketId, targetUserId, canPublishAudio, canPublishVideo, canScreenShare }) => {
             try {
                 if (sessionId && targetUserId) {
-                    await MediaPermission.findOneAndUpdate(
-                        { sessionId, userId: targetUserId },
-                        { canPublishAudio, canPublishVideo, canScreenShare, updatedBy: "Admin" },
-                        { upsert: true }
-                    );
+                    await supabase.from('media_permissions').upsert({
+                        session_id: sessionId,
+                        user_id: targetUserId,
+                        can_publish_audio: canPublishAudio,
+                        can_publish_video: canPublishVideo,
+                        can_screen_share: canScreenShare,
+                        updated_by: "Admin"
+                    }, { onConflict: 'session_id, user_id' });
                 }
                 io.to(targetSocketId).emit("media-permission-updated", {
                     canPublishAudio,
