@@ -20,6 +20,7 @@ import {
 } from "../controllers/usersController.js";
 import { authLimiter } from "../middlewares/rateLimiter.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { getActiveRooms } from "../controllers/socketmanager.js";
  
 const router = Router();
 
@@ -48,6 +49,19 @@ router.route("/add_to_activity").post(addToHistory); // alias
 router.route("/get_all_activity").get(getUserHistory);
 router.route("/get_to_activity").get(getUserHistory); // alias
 
+// ==============================
+// Active Rooms Routes
+// ==============================
+router.route("/active-rooms").get((req, res) => {
+    try {
+        const activeRooms = getActiveRooms();
+        return res.status(200).json({ activeRooms });
+    } catch (e) {
+        return res.status(500).json({ message: "Failed to fetch active rooms" });
+    }
+});
+
+// ==============================
 // WebRTC RTC Token Generation with Strict Role Authority
 router.route("/media/rtc-token").post(generateRtcTokenController).get(generateRtcTokenController);
 

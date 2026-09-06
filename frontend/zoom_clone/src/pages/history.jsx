@@ -8,9 +8,12 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HistoryIcon from '@mui/icons-material/History';
 
+const server_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
 export default function History() {
     const { getHistoryOfUser } = useContext(AuthContext);
     const [meetings, setMeetings] = useState([]);
+    const [activeRooms, setActiveRooms] = useState([]);
     const routeTo = useNavigate();
 
     useEffect(() => {
@@ -19,6 +22,12 @@ export default function History() {
                 const history = await getHistoryOfUser();
                 if (Array.isArray(history)) {
                     setMeetings(history);
+                }
+
+                const response = await fetch(`${server_url}/api/v1/users/active-rooms`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setActiveRooms(data.activeRooms || []);
                 }
             } catch (err) {
                 console.error(err);
@@ -84,6 +93,8 @@ export default function History() {
                     <Grid container spacing={3}>
                         {meetings.map((e, i) => {
                             const code = e.meeting_id || e.meetingCode || e.mettingCode || "Unknown";
+                            const isActive = activeRooms.includes(code);
+                            
                             return (
                                 <Grid item xs={12} sm={6} key={i}>
                                     <Card elevation={0} sx={{ 
@@ -101,15 +112,15 @@ export default function History() {
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                 <Box
                                                     sx={{
-                                                        backgroundColor: '#ecfdf5',
-                                                        color: '#047857',
+                                                        backgroundColor: isActive ? '#ecfdf5' : '#f3f4f6',
+                                                        color: isActive ? '#047857' : '#6b7280',
                                                         padding: '4px 10px',
                                                         borderRadius: '12px',
                                                         fontSize: '12px',
                                                         fontWeight: 600
                                                     }}
                                                 >
-                                                    Completed
+                                                    {isActive ? "Active" : "Completed"}
                                                 </Box>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#667085', fontSize: '0.85rem' }}>
                                                     <CalendarTodayIcon sx={{ fontSize: 16 }} />
@@ -117,30 +128,40 @@ export default function History() {
                                                 </Box>
                                             </Box>
                                             
-                                            <Typography variant="subtitle2" sx={{ color: '#667085', mb: 0.5 }}>
-                                                Meeting Code:
-                                            </Typography>
-                                            <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', mb: 2.5, fontFamily: 'monospace' }}>
-                                                {code}
-                                            </Typography>
-
-                                            <Button 
-                                                variant="contained" 
-                                                size="medium" 
-                                                fullWidth
-                                                startIcon={<PlayArrowIcon />}
-                                                onClick={() => routeTo(`/${code}`)}
-                                                sx={{
-                                                    backgroundColor: '#0e71eb',
-                                                    '&:hover': { backgroundColor: '#0b5ed7' },
-                                                    textTransform: 'none',
-                                                    fontWeight: 600,
-                                                    borderRadius: '8px',
-                                                    py: 1
-                                                }}
-                                            >
-                                                Rejoin Meeting
-                                            </Button>
+                                            {isActive ? (
+                                                <>
+                                                    <Typography variant="subtitle2" sx={{ color: '#667085', mb: 0.5 }}>
+                                                        Meeting Code:
+                                                    </Typography>
+                                                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', mb: 2.5, fontFamily: 'monospace' }}>
+                                                        {code}
+                                                    </Typography>
+        
+                                                    <Button 
+                                                        variant="contained" 
+                                                        size="medium" 
+                                                        fullWidth
+                                                        startIcon={<PlayArrowIcon />}
+                                                        onClick={() => routeTo(`/${code}`)}
+                                                        sx={{
+                                                            backgroundColor: '#0e71eb',
+                                                            '&:hover': { backgroundColor: '#0b5ed7' },
+                                                            textTransform: 'none',
+                                                            fontWeight: 600,
+                                                            borderRadius: '8px',
+                                                            py: 1
+                                                        }}
+                                                    >
+                                                        Rejoin Meeting
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Box sx={{ textAlign: 'center', py: 3 }}>
+                                                    <Typography variant="body2" sx={{ color: '#9ca3af', fontStyle: 'italic' }}>
+                                                        This meeting has ended. <br/> Rejoin link is no longer available.
+                                                    </Typography>
+                                                </Box>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </Grid>
