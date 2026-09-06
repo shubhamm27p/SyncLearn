@@ -11,9 +11,9 @@ export const globalLimiter = rateLimit({
 
 // API Trigger Limiter: Strict limit for sensitive routes (e.g., login, register, password reset)
 export const authLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour window
-    max: 5, // Start blocking after 5 requests
-    message: { message: "Too many authentication attempts from this IP, please try again after an hour." },
+    windowMs: 5 * 60 * 1000, // 5 minutes window
+    max: 50, // Start blocking after 5 requests
+    message: { message: "Too many authentication attempts from this IP, please try again after 5 minutes." },
     standardHeaders: true,
     legacyHeaders: false,
 });
