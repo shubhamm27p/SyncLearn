@@ -9,6 +9,7 @@ import VideoMeetComponent from './pages/videomate.jsx';
 import AppTheme from './shared-theme/AppTheme';
 
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import AdminLogin from './pages/AdminLogin.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
 import NotFound from './pages/NotFound.jsx';
 import { Toaster } from 'react-hot-toast';
@@ -51,6 +52,7 @@ function App() {
               <Route path='/auth' element={<Authentication />} />
               <Route path='/home' element={<HomeComponent />} />
               <Route path='/history' element={<History />} />
+              <Route path='/admin-login' element={<AdminLogin />} />
               <Route path='/admin' element={<AdminDashboard />} />
               <Route path='/profile' element={<ProfileSettings />} />
               <Route path='/settings' element={<ProfileSettings />} />
