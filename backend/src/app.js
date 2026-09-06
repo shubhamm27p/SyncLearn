@@ -47,9 +47,14 @@ app.use(helmet());
 app.use(globalLimiter);
 // ---------------------------------------------------------
 
-// Restrict CORS for Production (Vercel Frontend)
-const allowedOrigins = process.env.NODE_ENV === "production" && process.env.FRONTEND_URL 
-    ? [process.env.FRONTEND_URL] 
+// Allow all Vercel preview URLs + the specific production URL
+const allowedOrigins = process.env.NODE_ENV === "production" && process.env.FRONTEND_URL
+    ? [
+        process.env.FRONTEND_URL,                // Main production URL
+        /https:\/\/.*\.vercel\.app$/,            // Any Vercel preview URL
+        "http://localhost:5173",                 // Local dev
+        "http://localhost:3000",                 // Local dev alt port
+      ]
     : "*";
 
 app.use(cors({
