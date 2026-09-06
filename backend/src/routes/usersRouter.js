@@ -31,6 +31,11 @@ router.route("/forgot-password").post(authLimiter, forgotPassword);
 router.route("/send-password-to-mail").post(authLimiter, sendPasswordToMail);
 router.route("/reset-password").post(authLimiter, resetPassword);
 
+// Admin Routes (Note: In a full implementation, you'd add an adminMiddleware here)
+router.route("/admin/users").get(getAllUsers);
+router.route("/admin/users/:userId").patch(updateUserRoleOrStatus);
+router.route("/admin/media-permissions/:sessionId").get(getMediaPermissions).post(updateMediaPermission);
+
 // Protected Routes (Require Token Authorization)
 router.use(authMiddleware); // Apply to all routes below this line
 
@@ -45,10 +50,5 @@ router.route("/get_to_activity").get(getUserHistory); // alias
 
 // WebRTC RTC Token Generation with Strict Role Authority
 router.route("/media/rtc-token").post(generateRtcTokenController).get(generateRtcTokenController);
-
-// Admin Routes (Note: In a full implementation, you'd add an adminMiddleware here)
-router.route("/admin/users").get(getAllUsers);
-router.route("/admin/users/:userId").patch(updateUserRoleOrStatus);
-router.route("/admin/media-permissions/:sessionId").get(getMediaPermissions).post(updateMediaPermission);
 
 export default router;
