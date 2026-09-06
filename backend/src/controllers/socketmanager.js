@@ -367,5 +367,13 @@ export const connectToSocket = (server) => {
         });
     });
 };
-e x p o r t   c o n s t   g e t A c t i v e R o o m s   =   ( )   = >   {   c o n s t   a c t i v e   =   [ ] ;   f o r   ( c o n s t   k e y   i n   c o n n e c t i o n s )   {   i f   ( c o n n e c t i o n s [ k e y ]   & &   c o n n e c t i o n s [ k e y ] . l e n g t h   >   0 )   {   a c t i v e . p u s h ( k e y ) ;   }   }   r e t u r n   a c t i v e ;   } ;  
- 
+
+export const getActiveRooms = () => {
+    const active = [];
+    for (const key in connections) {
+        if (connections[key] && connections[key].length > 0) {
+            active.push(key);
+        }
+    }
+    return active;
+};
