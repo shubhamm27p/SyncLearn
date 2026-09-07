@@ -25,7 +25,7 @@ export const authMiddleware = async (req, res, next) => {
             .from('users')
             .select('id, name, username, email, role, is_active')
             .eq('token', token)
-            .single();
+            .maybeSingle();
 
         if (error || !user) {
             return res.status(401).json({ message: 'Unauthorized: Invalid token' });

@@ -43,6 +43,7 @@ import TakeCodingTest from './mcq_engine/pages/student/TakeCodingTest.jsx';
 import CodingResults from './mcq_engine/pages/student/CodingResults.jsx';
 import CombinedResult from './mcq_engine/pages/student/CombinedResult.jsx';
 import ProtectedRoute from './mcq_engine/components/ProtectedRoute.jsx';
+import ErrorBoundary from './mcq_engine/components/ErrorBoundary.jsx';
 
 const ProtectedVideoMeetComponent = withAuth(VideoMeetComponent);
 
@@ -51,9 +52,10 @@ function App() {
     <AppTheme>
       <div className="App">
         <Toaster position="top-center" />
-        <Router>
-          <AuthProvider> 
-            <Routes>
+        <ErrorBoundary>
+          <Router>
+            <AuthProvider> 
+              <Routes>
               <Route path='/' element={<LandingPage />} />
               <Route path='/about' element={<ApplicationDetails />} />
               <Route path='/terms' element={<TermsAndConditions />} />
@@ -110,6 +112,7 @@ function App() {
             </Routes>
           </AuthProvider>
         </Router>
+        </ErrorBoundary>
       </div>
     </AppTheme>
   );

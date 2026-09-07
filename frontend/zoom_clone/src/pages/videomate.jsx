@@ -442,7 +442,14 @@ export default function VideoMeetComponent() {
     };
 
     let gotMessageFromServer = (fromId, message) => {
-        var signal = JSON.parse(message);
+        let signal;
+        try {
+            signal = typeof message === 'string' ? JSON.parse(message) : message;
+        } catch (err) {
+            console.error("Invalid WebRTC signal format:", err);
+            return;
+        }
+        if (!signal) return;
 
         if (fromId !== socketIdRef.current && connectionsRef.current[fromId]) {
             if (signal.sdp) {

@@ -9,6 +9,8 @@ import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcrypt";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import { authMiddleware } from "./middlewares/authMiddleware.js";
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables from .env if present
 try {
@@ -103,6 +105,25 @@ app.use(cors({
     origin: allowedOrigins,
     credentials: true
 }));
+
+// API Gateway to MCQ Backend
+app.use(
+    "/api/mcq",
+    authMiddleware,
+    (req, res, next) => {
+        // Inject Supabase user info securely into headers
+        req.headers['x-auth-user'] = JSON.stringify(req.user);
+        req.headers['x-gateway-secret'] = process.env.GATEWAY_SECRET || "super_secret_gateway_key_2026";
+        next();
+    },
+    createProxyMiddleware({
+        target: process.env.MCQ_BACKEND_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        pathRewrite: {
+            '^/api/mcq': '/api',
+        }
+    })
+);
 
 app.use(express.json({limit: "49kb"}));
 app.use(express.urlencoded({limit: "40kb", extended: true}));

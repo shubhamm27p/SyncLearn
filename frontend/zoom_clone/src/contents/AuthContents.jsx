@@ -33,6 +33,7 @@ export const AuthProvider = ({children}) => {
         }
     };
     const [currentUser, setCurrentUser] = useState(getInitialUser());
+    const [userRole, setUserRole] = useState(localStorage.getItem("userRole") || "student");
 
     const handleRegister = async (name, username, password, role = "student") => {
         try { 
