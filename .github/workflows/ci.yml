@@ -28,10 +28,10 @@ jobs:
           cache-dependency-path: './frontend/zoom_clone/package-lock.json'
 
       - name: Install Frontend Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint Frontend
-        run: npm run lint || true
+        run: npm run lint
 
       - name: Build Frontend
         run: npm run build
@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: './backend/package-lock.json'
 
       - name: Install Backend Dependencies
-        run: npm install
+        run: npm ci
 
       # Run the automated backend security and auth tests
       - name: Run Backend Tests
