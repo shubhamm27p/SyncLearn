@@ -214,3 +214,27 @@ code {
   border-color: #0e71eb;
 }
 
+/* Calendar picker icon contrast & visibility fix */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+.dms-input[type="date"],
+.dms-input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 4px;
+  filter: opacity(0.85) brightness(0.1);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  filter: brightness(0);
+}
+
+
