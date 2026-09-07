@@ -14,8 +14,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import toast from 'react-hot-toast';
 
-const server_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
 export default function History() {
     const { getHistoryOfUser, getActiveRoomsApi, clearUserHistoryApi, deleteMeetingHistoryApi } = useContext(AuthContext);
     const [meetings, setMeetings] = useState([]);

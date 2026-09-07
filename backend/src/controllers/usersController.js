@@ -32,7 +32,10 @@ export const getSiteOnlineStatus = async () => {
                     .insert({ key: 'main_site', is_online: true })
                     .select('is_online')
                     .single();
-                if (!createError && created) return created.is_online;
+                if (!createError && created) {
+                    siteStatusCache = { value: created.is_online, expiresAt: Date.now() + 5000 };
+                    return created.is_online;
+                }
             } catch (createErr) {
                 console.warn("[getSiteOnlineStatus] Error creating default site_settings row:", createErr.message);
             }
