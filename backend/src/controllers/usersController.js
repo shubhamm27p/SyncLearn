@@ -206,6 +206,57 @@ const addToHistory = async (req, res) => {
     }
 };
 
+const clearUserHistory = async (req, res) => {
+    const token = req.query?.token || req.body?.token;
+
+    if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+    }
+
+    try {
+        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
+        if (userError || !user) {
+            return res.status(404).json({ message: "User Not Found" });
+        }
+
+        const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', user.username);
+        if (deleteError) throw deleteError;
+
+        return res.status(200).json({ message: "Meeting history cleared successfully" });
+    } catch (e) {
+        console.error("clearUserHistory error:", e);
+        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+    }
+};
+
+const deleteMeetingFromHistory = async (req, res) => {
+    const token = req.query?.token || req.body?.token;
+    const { id } = req.params;
+
+    if (!token || !id) {
+        return res.status(400).json({ message: "Token and meeting ID are required" });
+    }
+
+    try {
+        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
+        if (userError || !user) {
+            return res.status(404).json({ message: "User Not Found" });
+        }
+
+        const { error } = await supabase.from('meetings')
+            .delete()
+            .eq('user_id', user.username)
+            .or(`id.eq.${id},meeting_id.eq.${id}`);
+
+        if (error) throw error;
+
+        return res.status(200).json({ message: "Meeting deleted from history" });
+    } catch (e) {
+        console.error("deleteMeetingFromHistory error:", e);
+        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+    }
+};
+
 const googleLogin = async (req, res) => {
     const { email, name, googleId, role } = req.body || {};
 
@@ -689,6 +740,8 @@ export {
     register, 
     getUserHistory, 
     addToHistory, 
+    clearUserHistory,
+    deleteMeetingFromHistory,
     googleLogin, 
     forgotPassword, 
     resetPassword, 

@@ -81,6 +81,32 @@ export const AuthProvider = ({children}) => {
         }
     }
 
+    const clearUserHistoryApi = async () => {
+        try {
+            let request = await client.delete("/clear_user_history", {
+                params: {
+                    token: localStorage.getItem("token")
+                }
+            });
+            return request.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    const deleteMeetingHistoryApi = async (meetingId) => {
+        try {
+            let request = await client.delete(`/delete_meeting_history/${meetingId}`, {
+                params: {
+                    token: localStorage.getItem("token")
+                }
+            });
+            return request.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     const handleGoogleLogin = async (email, name, googleId, role = "student") => {
         try {
             let request = await client.post("/google-login", {
@@ -238,6 +264,8 @@ export const AuthProvider = ({children}) => {
         setCurrentUser,
         addToUserHistory,
         getHistoryOfUser,
+        clearUserHistoryApi,
+        deleteMeetingHistoryApi,
         handleRegister,
         handleLogin,
         handleGoogleLogin,

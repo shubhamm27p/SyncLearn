@@ -2,6 +2,8 @@ import { Router } from "express";
 import { 
     addToHistory, 
     getUserHistory, 
+    clearUserHistory,
+    deleteMeetingFromHistory,
     login, 
     register, 
     googleLogin, 
@@ -53,6 +55,8 @@ router.route("/add_to_acitivity").post(addToHistory);
 router.route("/add_to_activity").post(addToHistory); // alias
 router.route("/get_all_activity").get(getUserHistory);
 router.route("/get_to_activity").get(getUserHistory); // alias
+router.route("/clear_user_history").delete(clearUserHistory).post(clearUserHistory);
+router.route("/delete_meeting_history/:id").delete(deleteMeetingFromHistory);
 
 // ==============================
 // Active Rooms Routes
