@@ -105,11 +105,18 @@ export default function VideoMeetComponent() {
 
     const {
         userData,
+        currentUser,
         userRole: contextRole,
         createQuizApi,
         submitQuizApi,
         getQuizRecordsApi
     } = useContext(AuthContext);
+
+    const storedUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+    const authUser = currentUser || storedUser || userData;
+    const token = localStorage.getItem("token");
+    const isAuthenticated = Boolean(token && (authUser?.name || authUser?.username));
+    const defaultUsername = authUser?.name || authUser?.username || "";
 
     const userRole = contextRole || localStorage.getItem("userRole") || "student";
 
@@ -124,7 +131,13 @@ export default function VideoMeetComponent() {
     let [messages, setMessages] = useState([]);
     let [newMessages, setNewMessages] = useState(0);
     let [askForUsername, setAskForUsername] = useState(true);
-    let [username, setUsername] = useState("");
+    let [username, setUsername] = useState(defaultUsername);
+
+    useEffect(() => {
+        if (isAuthenticated && defaultUsername) {
+            setUsername(defaultUsername);
+        }
+    }, [defaultUsername, isAuthenticated]);
 
     let [isHost, setIsHost] = useState(false);
     let [hostId, setHostId] = useState(null);
@@ -1095,11 +1108,27 @@ export default function VideoMeetComponent() {
                         <div className={styles.lobbyForm}>
                             <TextField 
                                 id="outlined-basic" 
-                                label="Username / Display Name" 
+                                label={isAuthenticated ? "Authenticated Account Name" : "Username / Display Name"} 
                                 value={username} 
-                                onChange={e => setUsername(e.target.value)} 
+                                onChange={e => {
+                                    if (!isAuthenticated) {
+                                        setUsername(e.target.value);
+                                    }
+                                }} 
+                                disabled={isAuthenticated}
                                 variant="outlined" 
                                 fullWidth
+                                helperText={isAuthenticated ? "🔒 Display name is locked to your account profile. Change it in Profile Settings." : ""}
+                                slotProps={{
+                                    input: {
+                                        readOnly: isAuthenticated,
+                                        startAdornment: isAuthenticated ? (
+                                            <InputAdornment position="start">
+                                                <LockIcon fontSize="small" sx={{ color: '#0e71eb' }} />
+                                            </InputAdornment>
+                                        ) : null
+                                    }
+                                }}
                             />
                             <Button 
                                 variant="contained" 
