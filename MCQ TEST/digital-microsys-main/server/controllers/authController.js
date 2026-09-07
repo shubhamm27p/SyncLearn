@@ -5,6 +5,7 @@ const { generateToken } = require('../utils/token');
 const { sendEmail, sendOTPEmail } = require('../utils/email');
 const config = require('../config');
 const OTP = require('../models/OTP');
+const { isSiteOnline } = require('./siteController');
 
 /**
  * @desc    Register a new student (public registration is student-only)
@@ -13,6 +14,9 @@ const OTP = require('../models/OTP');
  */
 exports.sendOTP = async (req, res) => {
   try {
+    if (!(await isSiteOnline())) {
+      return res.status(503).json({ success: false, message: 'The website is currently offline. Please try again later.', code: 'SITE_OFFLINE' });
+    }
     console.log('=== SEND OTP CALLED ===');
     console.log('Request body:', req.body);
     console.log('Email config:', {
@@ -115,6 +119,9 @@ exports.sendOTP = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
+    if (!(await isSiteOnline())) {
+      return res.status(503).json({ success: false, message: 'The website is currently offline. Please try again later.', code: 'SITE_OFFLINE' });
+    }
     const {
       name,
       email,
@@ -251,6 +258,10 @@ exports.login = async (req, res, next) => {
     }
 
     const { email, password, role } = req.body;
+
+    if (role !== 'admin' && !(await isSiteOnline())) {
+      return res.status(503).json({ success: false, message: 'The website is currently offline. Please try again later.', code: 'SITE_OFFLINE' });
+    }
 
     // Find user with password field
     const user = await User.findOne({ email }).select('+password');

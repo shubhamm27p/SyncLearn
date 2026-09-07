@@ -19,8 +19,13 @@ const AdminDashboard = () => {
     recentTests: [], recentSubmissions: [],
   });
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(true);
 
-  useEffect(() => { fetchStats(); }, []);
+  useEffect(() => {
+    fetchStats();
+    fetchSiteStatus();
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -28,6 +33,26 @@ const AdminDashboard = () => {
       setStats(res.data.data);
     } catch { toast.error('Failed to load dashboard stats'); }
     finally { setLoading(false); }
+  };
+
+  const fetchSiteStatus = async () => {
+    try {
+      const res = await API.get('/site/status');
+      setIsOnline(res.data.data.isOnline);
+    } catch { toast.error('Failed to load website status'); }
+    finally { setStatusLoading(false); }
+  };
+
+  const toggleSiteStatus = async () => {
+    const nextStatus = !isOnline;
+    setStatusLoading(true);
+    try {
+      const res = await API.put('/site/status', { isOnline: nextStatus });
+      setIsOnline(res.data.data.isOnline);
+      toast.success(res.data.message);
+    } catch {
+      toast.error('Failed to update website status');
+    } finally { setStatusLoading(false); }
   };
 
   const cards = [
@@ -81,6 +106,18 @@ const AdminDashboard = () => {
         <Link to="/admin/tests/create" className="dms-btn dms-btn-amber dms-btn-sm">
           <HiOutlinePlus size={16} /> Create Test
         </Link>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', padding: '16px 20px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Website access</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            {isOnline ? 'Students can access the website.' : 'Students are blocked until you turn the website back on.'}
+          </p>
+        </div>
+        <button type="button" onClick={toggleSiteStatus} disabled={statusLoading} className="dms-btn dms-btn-sm" style={{ minWidth: 120, background: isOnline ? 'var(--accent-green)' : 'var(--accent-red)', color: '#fff', border: 'none', opacity: statusLoading ? 0.6 : 1 }}>
+          {statusLoading ? 'Updating...' : isOnline ? 'Turn off' : 'Turn on'}
+        </button>
       </div>
 
       {/* Stats Grid */}

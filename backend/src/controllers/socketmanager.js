@@ -6,6 +6,24 @@ let messages = {};
 let timeOnline = {};
 let activeQuizzes = {}; // roomKey -> active quiz state (stores server-side correctOptionIndex, timer, and buffered responses)
 let socketUserMap = {}; // socket.id -> { username, role, room }
+let meetingHosts = {}; // roomKey -> { ownerUsername, activeHostId }
+
+const getRoomUsers = (room) => connections[room].map((sId) => ({
+    socketId: sId,
+    username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
+    role: sId === meetingHosts[room]?.activeHostId ? "trainer" : "student",
+    profilePic: socketUserMap[sId]?.profilePic || null,
+    mediaState: socketUserMap[sId]?.mediaState || { video: true, audio: true }
+}));
+
+const broadcastRoomState = (io, room) => {
+    if (!connections[room] || !meetingHosts[room]) return;
+
+    const roomUsers = getRoomUsers(room);
+    connections[room].forEach((sId) => {
+        io.to(sId).emit("user-joined", sId, connections[room], meetingHosts[room].activeHostId, null, roomUsers);
+    });
+};
 
 /**
  * Asynchronously flushes buffered quiz responses from in-memory / Redis cache to the Database
@@ -70,25 +88,31 @@ export const connectToSocket = (server) => {
                 connections[path] = [];
             }
 
+            const username = userMetaData.username || `User_${socket.id.substring(0, 4)}`;
+            if (!meetingHosts[path]) {
+                meetingHosts[path] = {
+                    ownerUsername: username,
+                    activeHostId: null
+                };
+            }
+
             connections[path].push(socket.id);
             timeOnline[socket.id] = new Date();
-            
-            const isFirstInRoom = connections[path][0] === socket.id;
+
+            const isOwner = meetingHosts[path].ownerUsername === username;
+            if (isOwner || !meetingHosts[path].activeHostId) {
+                meetingHosts[path].activeHostId = socket.id;
+            }
+
             socketUserMap[socket.id] = {
-                username: userMetaData.username || `User_${socket.id.substring(0, 4)}`,
-                role: userMetaData.role || (isFirstInRoom ? "trainer" : "student"),
+                username,
+                role: socket.id === meetingHosts[path].activeHostId ? "trainer" : "student",
                 room: path,
                 profilePic: userMetaData.profilePic || null,
                 mediaState: userMetaData.mediaState || { video: true, audio: true }
             };
 
-            const roomUserList = connections[path].map(sId => ({
-                socketId: sId,
-                username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
-                role: socketUserMap[sId]?.role || (connections[path][0] === sId ? "trainer" : "student"),
-                profilePic: socketUserMap[sId]?.profilePic || null,
-                mediaState: socketUserMap[sId]?.mediaState || { video: true, audio: true }
-            }));
+            const roomUserList = getRoomUsers(path);
 
             // Notify everyone in the room
             for (let a = 0; a < connections[path].length; a++) {
@@ -96,7 +120,7 @@ export const connectToSocket = (server) => {
                     "user-joined", 
                     socket.id, 
                     connections[path], 
-                    connections[path][0],
+                    meetingHosts[path].activeHostId,
                     socketUserMap[socket.id],
                     roomUserList
                 );
@@ -195,16 +219,19 @@ export const connectToSocket = (server) => {
                 connections[userRoom].splice(idx, 1);
             }
 
-            const updatedRoomUsers = connections[userRoom].map(sId => ({
-                socketId: sId,
-                username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
-                role: socketUserMap[sId]?.role || (connections[userRoom][0] === sId ? "trainer" : "student")
-            }));
+            if (meetingHosts[userRoom]?.activeHostId === targetSocketId) {
+                meetingHosts[userRoom].activeHostId = connections[userRoom][0] || null;
+                connections[userRoom].forEach((sId) => {
+                    if (socketUserMap[sId]) socketUserMap[sId].role = sId === meetingHosts[userRoom].activeHostId ? "trainer" : "student";
+                });
+            }
+
+            const updatedRoomUsers = getRoomUsers(userRoom);
 
             // Notify remaining participants in the room
             connections[userRoom].forEach(elem => {
                 io.to(elem).emit("user-left", targetSocketId);
-                io.to(elem).emit("user-joined", elem, connections[userRoom], connections[userRoom][0], null, updatedRoomUsers);
+                io.to(elem).emit("user-joined", elem, connections[userRoom], meetingHosts[userRoom]?.activeHostId, null, updatedRoomUsers);
             });
 
             console.log(`[Host Action] ${socket.id} removed participant ${targetSocketId} (${targetUsername}) from room ${userRoom}`);
@@ -364,6 +391,7 @@ export const connectToSocket = (server) => {
 
         socket.on("disconnect", () => {
             const userRoom = socketUserMap[socket.id]?.room;
+            const wasActiveHost = meetingHosts[userRoom]?.activeHostId === socket.id;
             delete socketUserMap[socket.id];
             delete timeOnline[socket.id];
 
@@ -383,6 +411,13 @@ export const connectToSocket = (server) => {
                         delete activeQuizzes[userRoom];
                     }
                     delete connections[userRoom];
+                    delete meetingHosts[userRoom];
+                } else if (wasActiveHost) {
+                    meetingHosts[userRoom].activeHostId = connections[userRoom][0];
+                    connections[userRoom].forEach((sId) => {
+                        if (socketUserMap[sId]) socketUserMap[sId].role = sId === meetingHosts[userRoom].activeHostId ? "trainer" : "student";
+                    });
+                    broadcastRoomState(io, userRoom);
                 }
             }
         });

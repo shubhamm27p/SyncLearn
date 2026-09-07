@@ -179,6 +179,25 @@ export const AuthProvider = ({children}) => {
         }
     };
 
+    const deleteUserApi = async (userId) => {
+        try {
+            let request = await client.delete(`/admin/users/${userId}`);
+            return request.data;
+        } catch (err) {
+            throw err;
+        }
+    };
+
+    const getSiteStatusApi = async () => {
+        const request = await client.get('/site-status');
+        return request.data;
+    };
+
+    const updateSiteStatusApi = async (isOnline) => {
+        const request = await client.put('/site-status', { isOnline });
+        return request.data;
+    };
+
     const getMediaPermissionsApi = async (sessionId) => {
         try {
             let request = await client.get(`/admin/media-permissions/${sessionId}`);
@@ -229,6 +248,9 @@ export const AuthProvider = ({children}) => {
         getQuizRecordsApi,
         getAllUsersApi,
         updateUserRoleStatusApi,
+        deleteUserApi,
+        getSiteStatusApi,
+        updateSiteStatusApi,
         getMediaPermissionsApi,
         updateMediaPermissionApi,
         getAgoraRtcTokenApi

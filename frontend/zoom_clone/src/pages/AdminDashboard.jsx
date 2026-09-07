@@ -5,6 +5,7 @@ import {
   Select, MenuItem, Switch, Button, Chip, Grid,
   Card, CardContent, IconButton, Avatar, TextField,
   InputAdornment, Tooltip, Divider, LinearProgress,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, CircularProgress,
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import SchoolIcon from "@mui/icons-material/School";
@@ -21,6 +22,7 @@ import BlockIcon from "@mui/icons-material/Block";
 import GroupIcon from "@mui/icons-material/Group";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
@@ -54,12 +56,19 @@ const MOCK_ACTIVITY = [
 export default function AdminDashboard() {
   useAdminGuard();
   const navigate = useNavigate();
-  const { getAllUsersApi, updateUserRoleStatusApi } = useContext(AuthContext);
+  const { getAllUsersApi, updateUserRoleStatusApi, deleteUserApi, getSiteStatusApi, updateSiteStatusApi } = useContext(AuthContext);
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [search, setSearch] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  // Delete modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -73,7 +82,23 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+    getSiteStatusApi().then((data) => setIsOnline(data.isOnline)).catch(() => toast.error("Failed to load website status")).finally(() => setStatusLoading(false));
+  }, []);
+
+  const handleSiteStatusToggle = async () => {
+    setStatusLoading(true);
+    try {
+      const data = await updateSiteStatusApi(!isOnline);
+      setIsOnline(data.isOnline);
+      toast.success(data.isOnline ? "Website is now online." : "Website is now offline.");
+    } catch {
+      toast.error("Failed to update website status.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const handleRoleChange = async (userId, newRole) => {
     try {
@@ -92,6 +117,33 @@ export default function AdminDashboard() {
       fetchUsers();
     } catch (err) {
       toast.error("Failed to update account status.");
+    }
+  };
+
+  const handleOpenDeleteModal = (user) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (deletingId) return;
+    setDeleteModalOpen(false);
+    setUserToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    const targetId = userToDelete.id || userToDelete._id;
+    setDeletingId(targetId);
+    try {
+      await deleteUserApi(targetId);
+      toast.success(`User "${userToDelete.name || userToDelete.username}" deleted successfully!`);
+      handleCloseDeleteModal();
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete user.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -266,6 +318,25 @@ export default function AdminDashboard() {
                 ))}
               </Grid>
 
+              <Paper sx={{ p: 3, mb: 4, borderRadius: "14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                  <Box>
+                    <Typography sx={{ color: "#f1f5f9", fontWeight: 700, fontSize: "16px" }}>Website access</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "13px", mt: 0.5 }}>
+                      {isOnline ? "The website is available to users." : "The website is offline and user access is blocked."}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleSiteStatusToggle}
+                    disabled={statusLoading}
+                    sx={{ minWidth: 120, bgcolor: isOnline ? "#10b981" : "#ef4444", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: isOnline ? "#059669" : "#dc2626" } }}
+                  >
+                    {statusLoading ? "Updating..." : isOnline ? "Turn off" : "Turn on"}
+                  </Button>
+                </Box>
+              </Paper>
+
               {/* User Distribution */}
               <Grid container spacing={3}>
                 <Grid item xs={12} md={7}>
@@ -345,75 +416,97 @@ export default function AdminDashboard() {
                       <TableCell>Role</TableCell>
                       <TableCell>Change Role</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredUsers.map((u) => (
-                      <TableRow
-                        key={u._id}
-                        sx={{ "& td": { borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#cbd5e1", fontSize: "13px" }, "&:hover": { bgcolor: "rgba(255,255,255,0.02)" } }}
-                      >
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: "#0e71eb", fontSize: "13px", fontWeight: 700 }}>
-                              {(u.name || u.username || "U").charAt(0).toUpperCase()}
-                            </Avatar>
-                            <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#e2e8f0" }}>{u.name || "N/A"}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: "monospace" }}>{u.username}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={u.role || "student"}
-                            size="small"
-                            sx={{
-                              fontWeight: 700, fontSize: "11px", textTransform: "capitalize",
-                              bgcolor: u.role === "admin" ? "rgba(245,158,11,0.12)" : u.role === "trainer" ? "rgba(139,92,246,0.12)" : "rgba(16,185,129,0.12)",
-                              color: u.role === "admin" ? "#f59e0b" : u.role === "trainer" ? "#a78bfa" : "#34d399",
-                              border: `1px solid ${u.role === "admin" ? "rgba(245,158,11,0.25)" : u.role === "trainer" ? "rgba(139,92,246,0.25)" : "rgba(16,185,129,0.25)"}`,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            size="small"
-                            value={u.role || "student"}
-                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                            sx={{
-                              minWidth: 120, fontSize: "13px", borderRadius: "8px",
-                              color: "#cbd5e1", bgcolor: "rgba(255,255,255,0.05)",
-                              "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
-                              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" },
-                              "& .MuiSelect-icon": { color: "#475569" },
-                            }}
-                            MenuProps={{ PaperProps: { sx: { bgcolor: "#1e293b", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.08)" } } }}
-                          >
-                            <MenuItem value="student">Student</MenuItem>
-                            <MenuItem value="trainer">Trainer</MenuItem>
-                            <MenuItem value="admin">Admin</MenuItem>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <Switch
-                              checked={u.is_active !== false}
-                              onChange={() => handleStatusToggle(u._id, u.is_active !== false)}
+                    {filteredUsers.map((u) => {
+                      const userId = u.id || u._id;
+                      return (
+                        <TableRow
+                          key={userId}
+                          sx={{ "& td": { borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#cbd5e1", fontSize: "13px" }, "&:hover": { bgcolor: "rgba(255,255,255,0.02)" } }}
+                        >
+                          <TableCell>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                              <Avatar sx={{ width: 32, height: 32, bgcolor: "#0e71eb", fontSize: "13px", fontWeight: 700 }}>
+                                {(u.name || u.username || "U").charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#e2e8f0" }}>{u.name || "N/A"}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ fontFamily: "monospace" }}>{u.username}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={u.role || "student"}
                               size="small"
                               sx={{
-                                "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
-                                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                                fontWeight: 700, fontSize: "11px", textTransform: "capitalize",
+                                bgcolor: u.role === "admin" ? "rgba(245,158,11,0.12)" : u.role === "trainer" ? "rgba(139,92,246,0.12)" : "rgba(16,185,129,0.12)",
+                                color: u.role === "admin" ? "#f59e0b" : u.role === "trainer" ? "#a78bfa" : "#34d399",
+                                border: `1px solid ${u.role === "admin" ? "rgba(245,158,11,0.25)" : u.role === "trainer" ? "rgba(139,92,246,0.25)" : "rgba(16,185,129,0.25)"}`,
                               }}
                             />
-                            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: u.is_active !== false ? "#10b981" : "#ef4444" }}>
-                              {u.is_active !== false ? "Active" : "Disabled"}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              size="small"
+                              value={u.role || "student"}
+                              onChange={(e) => handleRoleChange(userId, e.target.value)}
+                              sx={{
+                                minWidth: 120, fontSize: "13px", borderRadius: "8px",
+                                color: "#cbd5e1", bgcolor: "rgba(255,255,255,0.05)",
+                                "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
+                                "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" },
+                                "& .MuiSelect-icon": { color: "#475569" },
+                              }}
+                              MenuProps={{ PaperProps: { sx: { bgcolor: "#1e293b", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.08)" } } }}
+                            >
+                              <MenuItem value="student">Student</MenuItem>
+                              <MenuItem value="trainer">Trainer</MenuItem>
+                              <MenuItem value="admin">Admin</MenuItem>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Switch
+                                checked={u.is_active !== false}
+                                onChange={() => handleStatusToggle(userId, u.is_active !== false)}
+                                size="small"
+                                sx={{
+                                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
+                                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                                }}
+                              />
+                              <Typography sx={{ fontSize: "12px", fontWeight: 600, color: u.is_active !== false ? "#10b981" : "#ef4444" }}>
+                                {u.is_active !== false ? "Active" : "Disabled"}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Delete User">
+                              <IconButton
+                                onClick={() => handleOpenDeleteModal(u)}
+                                size="small"
+                                sx={{
+                                  color: "#ef4444",
+                                  bgcolor: "rgba(239,68,68,0.1)",
+                                  border: "1px solid rgba(239,68,68,0.2)",
+                                  "&:hover": {
+                                    bgcolor: "rgba(239,68,68,0.2)",
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filteredUsers.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 6, color: "#475569", borderBottom: "none" }}>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6, color: "#475569", borderBottom: "none" }}>
                           {search ? `No users matching "${search}"` : "No users found."}
                         </TableCell>
                       </TableRow>
@@ -451,6 +544,57 @@ export default function AdminDashboard() {
           )}
         </Box>
       </Box>
+
+      {/* ── DELETE CONFIRMATION DIALOG ── */}
+      <Dialog
+        open={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        PaperProps={{
+          sx: {
+            bgcolor: "#1e293b",
+            color: "#f1f5f9",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            maxWidth: 440,
+            width: "100%",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "18px", borderBottom: "1px solid rgba(255,255,255,0.06)", pb: 2 }}>
+          Delete User Account
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <DialogContentText sx={{ color: "#94a3b8", fontSize: "14px" }}>
+            Are you sure you want to permanently delete the account for{" "}
+            <strong style={{ color: "#f1f5f9" }}>{userToDelete?.name || userToDelete?.username}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <Button
+            onClick={handleCloseDeleteModal}
+            disabled={!!deletingId}
+            sx={{ color: "#94a3b8", "&:hover": { bgcolor: "rgba(255,255,255,0.05)" } }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            disabled={!!deletingId}
+            variant="contained"
+            color="error"
+            startIcon={deletingId ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              bgcolor: "#ef4444",
+              "&:hover": { bgcolor: "#dc2626" },
+              fontWeight: 600,
+              borderRadius: "8px",
+              px: 2.5,
+            }}
+          >
+            {deletingId ? "Deleting..." : "Delete User"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

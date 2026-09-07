@@ -59,3 +59,13 @@ CREATE TABLE media_permissions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(session_id, user_id)
 );
+
+CREATE TABLE site_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    is_online BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO site_settings (key, is_online)
+VALUES ('main_site', true)
+ON CONFLICT (key) DO NOTHING;

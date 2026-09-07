@@ -5,6 +5,50 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendNewPasswordEmail } from "../utils/sendEmail.js";
 
+export const getSiteOnlineStatus = async () => {
+    const { data, error } = await supabase
+        .from('site_settings')
+        .select('is_online')
+        .eq('key', 'main_site')
+        .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+        const { data: created, error: createError } = await supabase
+            .from('site_settings')
+            .insert({ key: 'main_site', is_online: true })
+            .select('is_online')
+            .single();
+        if (createError) throw createError;
+        return created.is_online;
+    }
+    return data.is_online;
+};
+
+export const getSiteStatus = async (_req, res) => {
+    try {
+        return res.json({ isOnline: await getSiteOnlineStatus() });
+    } catch (error) {
+        return res.status(500).json({ message: `Unable to read site status: ${error.message}` });
+    }
+};
+
+export const updateSiteStatus = async (req, res) => {
+    if (typeof req.body?.isOnline !== 'boolean') {
+        return res.status(400).json({ message: 'isOnline must be a boolean' });
+    }
+    try {
+        const { data, error } = await supabase
+            .from('site_settings')
+            .upsert({ key: 'main_site', is_online: req.body.isOnline, updated_at: new Date().toISOString() })
+            .select('is_online')
+            .single();
+        if (error) throw error;
+        return res.json({ isOnline: data.is_online });
+    } catch (error) {
+        return res.status(500).json({ message: `Unable to update site status: ${error.message}` });
+    }
+};
+
 const login = async (req, res) => {
     const { username, password } = req.body || {};
 
@@ -13,6 +57,9 @@ const login = async (req, res) => {
     }
 
     try {
+        if (await getSiteOnlineStatus() === false) {
+            return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
+        }
         const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
         if (error || !user) {
             return res.status(404).json({ message: "User Not Found!" });
@@ -55,6 +102,9 @@ const register = async (req, res) => {
     }
 
     try {
+        if (await getSiteOnlineStatus() === false) {
+            return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
+        }
         const targetEmail = username.includes("@") ? username : `${username}@synclearn.edu`;
 
         // Ensure no two users have the same username OR email
@@ -498,6 +548,27 @@ const updateUserRoleOrStatus = async (req, res) => {
     }
 };
 
+const deleteUser = async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const { data: user, error } = await supabase.from('users')
+            .delete()
+            .eq('id', userId)
+            .select();
+
+        if (error) {
+            console.error("Delete User error:", error);
+            return res.status(500).json({ message: `Failed to delete user: ${error.message}` });
+        }
+
+        return res.status(200).json({ message: "User deleted successfully", user });
+    } catch (e) {
+        console.error("Delete User exception:", e);
+        return res.status(500).json({ message: `Failed to delete user: ${e.message || e}` });
+    }
+};
+
 const getMediaPermissions = async (req, res) => {
     const { sessionId } = req.params;
     try {
@@ -606,6 +677,7 @@ export {
     getQuizRecords,
     getAllUsers,
     updateUserRoleOrStatus,
+    deleteUser,
     getMediaPermissions,
     updateMediaPermission,
     generateRtcTokenController

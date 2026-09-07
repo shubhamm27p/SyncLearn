@@ -14,9 +14,11 @@ import {
     getQuizRecords,
     getAllUsers,
     updateUserRoleOrStatus,
+    deleteUser,
     getMediaPermissions,
     updateMediaPermission,
     generateRtcTokenController
+    ,getSiteStatus, updateSiteStatus
 } from "../controllers/usersController.js";
 import { authLimiter } from "../middlewares/rateLimiter.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
@@ -34,8 +36,11 @@ router.route("/reset-password").post(authLimiter, resetPassword);
 
 // Admin Routes (Note: In a full implementation, you'd add an adminMiddleware here)
 router.route("/admin/users").get(getAllUsers);
-router.route("/admin/users/:userId").patch(updateUserRoleOrStatus);
+router.route("/admin/users/:userId")
+    .patch(updateUserRoleOrStatus)
+    .delete(deleteUser);
 router.route("/admin/media-permissions/:sessionId").get(getMediaPermissions).post(updateMediaPermission);
+router.route("/site-status").get(getSiteStatus).put(updateSiteStatus);
 
 // Protected Routes (Require Token Authorization)
 router.use(authMiddleware); // Apply to all routes below this line

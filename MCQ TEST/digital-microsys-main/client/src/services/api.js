@@ -36,6 +36,11 @@ API.interceptors.response.use(
     const { status, data } = error.response;
     const message = data?.message || 'Something went wrong';
 
+    if (data?.code === 'SITE_OFFLINE') {
+      toast.error(message, { id: 'site-offline' });
+      return Promise.reject(error);
+    }
+
     switch (status) {
       case 401:
         // Token expired or invalid — auto-logout

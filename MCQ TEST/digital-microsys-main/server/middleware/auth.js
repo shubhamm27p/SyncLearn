@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../config');
+const { isSiteOnline } = require('../controllers/siteController');
 
 /**
  * Protect routes — verify JWT token and attach user to req.
@@ -37,6 +38,14 @@ const protect = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: 'Your account has been deactivated. Contact admin.',
+      });
+    }
+
+    if (user.role !== 'admin' && !(await isSiteOnline())) {
+      return res.status(503).json({
+        success: false,
+        message: 'The website is currently offline. Please try again later.',
+        code: 'SITE_OFFLINE',
       });
     }
 

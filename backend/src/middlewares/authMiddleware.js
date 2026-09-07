@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase.js';
+import { getSiteOnlineStatus } from '../controllers/usersController.js';
 
 export const authMiddleware = async (req, res, next) => {
     try {
@@ -32,6 +33,13 @@ export const authMiddleware = async (req, res, next) => {
 
         if (!user.is_active) {
             return res.status(403).json({ message: 'Forbidden: User account is inactive' });
+        }
+
+        if (user.role !== 'admin' && !(await getSiteOnlineStatus())) {
+            return res.status(503).json({
+                message: 'The website is currently offline. Please try again later.',
+                code: 'SITE_OFFLINE'
+            });
         }
 
         // Attach user to request object
