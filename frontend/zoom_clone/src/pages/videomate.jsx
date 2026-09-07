@@ -1126,8 +1126,113 @@ export default function VideoMeetComponent() {
                             color={userRole === 'trainer' || userRole === 'admin' ? "secondary" : "primary"}
                             sx={{ fontWeight: 'bold' }}
                         />
-                        <div className={styles.lobbyVideoPreview}>
-                            <video ref={localVideoRef} autoPlay muted playsInline></video>
+                        <div className={styles.lobbyVideoPreview} style={{ position: 'relative', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {video ? (
+                                <video 
+                                    ref={(ref) => {
+                                        localVideoRef.current = ref;
+                                        if (ref && window.localStream) {
+                                            if (ref.srcObject !== window.localStream) {
+                                                ref.srcObject = window.localStream;
+                                            }
+                                            ref.play().catch(err => console.log("Lobby video play error:", err));
+                                        }
+                                    }} 
+                                    autoPlay 
+                                    muted 
+                                    playsInline 
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                ></video>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                                    <Avatar 
+                                        src={userData?.profilePic || ""} 
+                                        sx={{ width: 64, height: 64, bgcolor: "#0e71eb", fontSize: "1.6rem", fontWeight: "bold", border: "3px solid rgba(255,255,255,0.2)" }}
+                                    >
+                                        {(username || "You")[0]?.toUpperCase()}
+                                    </Avatar>
+                                    <Typography variant="caption" sx={{ color: "#94a3b8", fontWeight: 600 }}>
+                                        Camera Off
+                                    </Typography>
+                                </div>
+                            )}
+
+                            {/* Top Right Media Status Pills */}
+                            <div style={{ position: "absolute", top: "10px", right: "10px", display: "flex", gap: "6px", zIndex: 10 }}>
+                                <Chip
+                                    size="small"
+                                    icon={audio ? <MicIcon style={{ color: "#ffffff", fontSize: 14 }} /> : <MicOffIcon style={{ color: "#ffffff", fontSize: 14 }} />}
+                                    label={audio ? "Mic On" : "Muted"}
+                                    sx={{
+                                        bgcolor: audio ? "rgba(16, 185, 129, 0.9)" : "rgba(239, 68, 68, 0.9)",
+                                        color: "#ffffff",
+                                        fontWeight: 700,
+                                        fontSize: "11px",
+                                        height: "24px"
+                                    }}
+                                />
+                                <Chip
+                                    size="small"
+                                    icon={video ? <VideocamIcon style={{ color: "#ffffff", fontSize: 14 }} /> : <VideocamOffIcon style={{ color: "#ffffff", fontSize: 14 }} />}
+                                    label={video ? "Cam On" : "Cam Off"}
+                                    sx={{
+                                        bgcolor: video ? "rgba(14, 113, 235, 0.9)" : "rgba(239, 68, 68, 0.9)",
+                                        color: "#ffffff",
+                                        fontWeight: 700,
+                                        fontSize: "11px",
+                                        height: "24px"
+                                    }}
+                                />
+                            </div>
+
+                            {/* Bottom Center Floating Quick Toggle Action Bar */}
+                            <div style={{
+                                position: "absolute",
+                                bottom: "12px",
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "12px",
+                                background: "rgba(0, 0, 0, 0.65)",
+                                backdropFilter: "blur(8px)",
+                                padding: "6px 14px",
+                                borderRadius: "24px",
+                                border: "1px solid rgba(255, 255, 255, 0.15)",
+                                zIndex: 10
+                            }}>
+                                <Tooltip title={audio ? "Mute Microphone" : "Unmute Microphone"}>
+                                    <IconButton
+                                        onClick={handleAudio}
+                                        size="small"
+                                        sx={{
+                                            color: "#ffffff",
+                                            bgcolor: audio ? "#10b981" : "#ef4444",
+                                            "&:hover": { bgcolor: audio ? "#059669" : "#dc2626" },
+                                            width: 36,
+                                            height: 36
+                                        }}
+                                    >
+                                        {audio ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
+                                    </IconButton>
+                                </Tooltip>
+
+                                <Tooltip title={video ? "Turn Camera Off" : "Turn Camera On"}>
+                                    <IconButton
+                                        onClick={handleVideo}
+                                        size="small"
+                                        sx={{
+                                            color: "#ffffff",
+                                            bgcolor: video ? "#0e71eb" : "#ef4444",
+                                            "&:hover": { bgcolor: video ? "#005ce6" : "#dc2626" },
+                                            width: 36,
+                                            height: 36
+                                        }}
+                                    >
+                                        {video ? <VideocamIcon fontSize="small" /> : <VideocamOffIcon fontSize="small" />}
+                                    </IconButton>
+                                </Tooltip>
+                            </div>
                         </div>
                         <div className={styles.lobbyForm}>
                             <TextField 
