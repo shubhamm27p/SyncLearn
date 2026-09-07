@@ -42,6 +42,7 @@ const flushQuizSubmissionsToDB = async (roomKey, quizState) => {
 export const connectToSocket = (server) => {
     const allowedOrigins = [
         'http://localhost:5173',
+        'https://sync-learn-binwzfjz1-shubhamm27p.vercel.app',
         'https://sync-learn.vercel.app',
         'https://synclearn-backend.onrender.com'
     ];
