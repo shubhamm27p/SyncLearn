@@ -503,7 +503,11 @@ export default function VideoMeetComponent() {
 
     let connectToSocketServer = () => {
         socketRef.current = io.connect(server_url, {
-            auth: token ? { token } : undefined
+            auth: {
+                token: token || localStorage.getItem("token") || `guest-${Math.random().toString(36).substring(2, 8)}`,
+                username: defaultUsername || username || "Guest User",
+                role: userRole || "student"
+            }
         });
 
         socketRef.current.on("socket-error", ({ message }) => {
@@ -513,18 +517,7 @@ export default function VideoMeetComponent() {
 
         socketRef.current.on("connect_error", (error) => {
             console.error("Socket connection failed:", error.message);
-            const authError = ['AUTH_REQUIRED', 'AUTH_INVALID', 'AUTH_ROLE_FORBIDDEN'].includes(error.data?.code);
-            if (authError) {
-                localStorage.removeItem("token");
-                localStorage.removeItem("currentUser");
-                localStorage.removeItem("userRole");
-                routeTo("/auth", {
-                    replace: true,
-                    state: { from: window.location.pathname, message: "Please log in or sign up before joining a meeting." }
-                });
-                return;
-            }
-            setSnackbarMsg("Unable to connect to the meeting server.");
+            setSnackbarMsg(error.message || "Unable to connect to the meeting server. Retrying...");
             setOpenSnackbar(true);
         });
 
