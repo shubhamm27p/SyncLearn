@@ -42,6 +42,7 @@ import ResultDetail from './mcq_engine/pages/student/ResultDetail.jsx';
 import TakeCodingTest from './mcq_engine/pages/student/TakeCodingTest.jsx';
 import CodingResults from './mcq_engine/pages/student/CodingResults.jsx';
 import CombinedResult from './mcq_engine/pages/student/CombinedResult.jsx';
+import ProtectedRoute from './mcq_engine/components/ProtectedRoute.jsx';
 
 const ProtectedVideoMeetComponent = withAuth(VideoMeetComponent);
 
