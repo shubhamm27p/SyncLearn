@@ -3,24 +3,41 @@ import { jest } from '@jest/globals';
 
 // Mock the Supabase client before importing app
 jest.unstable_mockModule('../src/utils/supabase.js', () => {
+    const queryBuilder = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn(),
+        maybeSingle: jest.fn(),
+    };
+
+    const supabase = {
+        from: jest.fn(() => queryBuilder),
+    };
+
     return {
-        supabase: {
-            from: jest.fn().mockReturnThis(),
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            single: jest.fn().mockReturnThis(),
-        }
+        supabase,
+        fetchSingleRecord: jest.fn(async (query) => {
+            if (query && typeof query.maybeSingle === 'function') {
+                return query.maybeSingle();
+            }
+            if (query && typeof query.single === 'function') {
+                return query.single();
+            }
+            return { data: null, error: null };
+        })
     };
 });
 
 const { app } = await import('../src/app.js');
 const { supabase } = await import('../src/utils/supabase.js');
 
+const mockQueryBuilder = supabase.from();
 
 describe('API Security & Auth Tests', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        supabase.from.mockReturnValue(mockQueryBuilder);
     });
 
     describe('Rate Limiting & Helmet', () => {
@@ -40,7 +57,7 @@ describe('API Security & Auth Tests', () => {
     describe('Auth Middleware', () => {
         it('should return 401 if token is invalid', async () => {
             // Mock Supabase to return an error/no user
-            supabase.single.mockResolvedValueOnce({ data: null, error: { message: 'Not found' } });
+            mockQueryBuilder.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Not found' } });
             
             const res = await request(app)
                 .get('/api/v1/users/profile')
@@ -52,7 +69,7 @@ describe('API Security & Auth Tests', () => {
 
         it('should return 403 if user is inactive', async () => {
             // Mock Supabase to return an inactive user
-            supabase.single.mockResolvedValueOnce({ 
+            mockQueryBuilder.maybeSingle.mockResolvedValueOnce({ 
                 data: { id: '1', username: 'testuser', is_active: false }, 
                 error: null 
             });
@@ -67,7 +84,7 @@ describe('API Security & Auth Tests', () => {
 
         it('should allow request if user is valid and active', async () => {
             // Mock Supabase to return an active user
-            supabase.single.mockResolvedValueOnce({ 
+            mockQueryBuilder.maybeSingle.mockResolvedValueOnce({ 
                 data: { id: '1', username: 'testuser', is_active: true }, 
                 error: null 
             });

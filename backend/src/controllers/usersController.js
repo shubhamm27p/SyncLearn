@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import { supabase } from "../utils/supabase.js";
+import { fetchSingleRecord, supabase } from "../utils/supabase.js";
 import { generateAgoraRtcToken, RtcRole } from "../utils/agoraTokenGenerator.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
@@ -13,11 +13,12 @@ export const getSiteOnlineStatus = async () => {
         return siteStatusCache.value;
     }
     try {
-        const { data, error } = await supabase
-            .from('site_settings')
-            .select('is_online')
-            .eq('key', 'main_site')
-            .maybeSingle();
+        const { data, error } = await fetchSingleRecord(
+            supabase
+                .from('site_settings')
+                .select('is_online')
+                .eq('key', 'main_site')
+        );
 
         if (error) {
             console.warn("[getSiteOnlineStatus] Supabase table 'site_settings' unavailable, using fallback:", error.message);
@@ -110,14 +111,16 @@ const login = async (req, res) => {
         if (!user && (cleanInput.toLowerCase() === defaultAdminUser.toLowerCase() || cleanInput.toLowerCase() === 'admin')) {
             if (password === defaultAdminPass || password === 'SyncAdmin@2026!') {
                 const hashedPassword = await bcrypt.hash(password, 10);
-                const { data: newAdmin } = await supabase.from('users').insert([{
-                    name: process.env.ADMIN_NAME || 'System Admin',
-                    username: defaultAdminUser,
-                    email: `${defaultAdminUser}@synclearn.edu`,
-                    password: hashedPassword,
-                    role: 'admin',
-                    is_active: true
-                }]).select().maybeSingle();
+                const { data: newAdmin } = await fetchSingleRecord(
+                    supabase.from('users').insert([{
+                        name: process.env.ADMIN_NAME || 'System Admin',
+                        username: defaultAdminUser,
+                        email: `${defaultAdminUser}@synclearn.edu`,
+                        password: hashedPassword,
+                        role: 'admin',
+                        is_active: true
+                    }]).select()
+                );
 
                 user = newAdmin || {
                     id: 'admin_sys_fallback',
@@ -143,12 +146,13 @@ const login = async (req, res) => {
         if (isMatch) {
             let token = crypto.randomBytes(20).toString("hex");
 
-            const { data: updatedUser, error: tokenUpdateError } = await supabase
-                .from('users')
-                .update({ token })
-                .eq('id', user.id)
-                .select('id')
-                .maybeSingle();
+            const { data: updatedUser, error: tokenUpdateError } = await fetchSingleRecord(
+                supabase
+                    .from('users')
+                    .update({ token })
+                    .eq('id', user.id)
+                    .select('id')
+            );
 
             if (tokenUpdateError || !updatedUser) {
                 console.error("[login] Failed to persist session token:", tokenUpdateError?.message || "User row was not updated");
@@ -194,11 +198,12 @@ const register = async (req, res) => {
         const targetEmail = username.includes("@") ? username : `${username}@synclearn.edu`;
 
         // Ensure no two users have the same username OR email
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('*')
-            .or(`username.eq.${username},email.eq.${username},username.eq.${targetEmail},email.eq.${targetEmail}`)
-            .maybeSingle();
+        const { data: existingUser } = await fetchSingleRecord(
+            supabase
+                .from('users')
+                .select('*')
+                .or(`username.eq.${username},email.eq.${username},username.eq.${targetEmail},email.eq.${targetEmail}`)
+        );
 
         if (existingUser) {
             return res.status(400).json({ message: "A user with this username or email already exists!" });

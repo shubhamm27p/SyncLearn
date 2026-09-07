@@ -4,3 +4,19 @@ const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project-ref.supaba
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
+
+export const fetchSingleRecord = async (queryBuilder) => {
+    if (!queryBuilder || typeof queryBuilder !== 'object') {
+        throw new TypeError('Supabase query builder is missing.');
+    }
+
+    if (typeof queryBuilder.maybeSingle === 'function') {
+        return queryBuilder.maybeSingle();
+    }
+
+    if (typeof queryBuilder.single === 'function') {
+        return queryBuilder.single();
+    }
+
+    throw new TypeError('Supabase query builder does not support single-record lookups.');
+};
