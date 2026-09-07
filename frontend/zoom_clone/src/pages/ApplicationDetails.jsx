@@ -45,7 +45,7 @@ export default function ApplicationDetails() {
                 <Button component={Link} to="/" startIcon={<ArrowBackIcon />} sx={{ color: "#475467", textTransform: "none", mb: 4 }}>
                     Back to home
                 </Button>
-                <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 48 }, fontWeight: 800, lineHeight: 1.15, mb: 2, color: "#101828" }}>
+                <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 48 }, fontWeight: 800, lineHeight: 1.15, mb: 2, color: "#101828 !important" }}>
                     One workspace for learning and connection
                 </Typography>
                 <Typography sx={{ color: "#475467", fontSize: 18, lineHeight: 1.7, mb: 5 }}>
@@ -56,14 +56,14 @@ export default function ApplicationDetails() {
                     {features.map((feature) => (
                         <Box key={feature.title} sx={{ backgroundColor: "#ffffff", border: "1px solid #eaecf0", borderRadius: "12px", p: 3 }}>
                             <CheckCircleIcon sx={{ color: "#0e71eb", mb: 1 }} />
-                            <Typography sx={{ fontWeight: 700, fontSize: 17, mb: 1, color: "#101828" }}>{feature.title}</Typography>
+                            <Typography sx={{ fontWeight: 700, fontSize: 17, mb: 1, color: "#101828 !important" }}>{feature.title}</Typography>
                             <Typography sx={{ color: "#667085", lineHeight: 1.6 }}>{feature.description}</Typography>
                         </Box>
                     ))}
                 </Box>
 
                 <Divider sx={{ my: 5 }} />
-                <Typography variant="h2" sx={{ fontSize: 26, fontWeight: 700, mb: 1.5, color: "#101828" }}>Who is SyncLearn for?</Typography>
+                <Typography variant="h2" sx={{ fontSize: 26, fontWeight: 700, mb: 1.5, color: "#101828 !important" }}>Who is SyncLearn for?</Typography>
                 <Typography sx={{ color: "#475467", lineHeight: 1.7 }}>
                     SyncLearn is designed for educational institutions, instructors, students, and teams that need a shared space for live communication and structured evaluations. Access to specific features depends on your account role and the workspace permissions assigned by an administrator.
                 </Typography>
