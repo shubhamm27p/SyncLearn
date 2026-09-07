@@ -625,3 +625,36 @@ exports.getDashboardStats = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Send test to students (publish & dispatch invitation record)
+ * @route   POST /api/tests/:id/send
+ * @access  Private (admin)
+ */
+exports.sendTestToStudents = async (req, res, next) => {
+  try {
+    const { emails, message, accessCode } = req.body;
+    const test = await Test.findById(req.params.id);
+    if (!test) {
+      return res.status(404).json({ success: false, message: 'Test not found' });
+    }
+
+    test.status = 'published';
+    if (accessCode) {
+      test.accessCode = accessCode;
+    }
+    await test.save();
+
+    res.json({
+      success: true,
+      message: `Test invitation dispatched to ${Array.isArray(emails) ? emails.length : 1} student(s)`,
+      data: {
+        testId: test._id,
+        recipients: emails,
+        status: test.status,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

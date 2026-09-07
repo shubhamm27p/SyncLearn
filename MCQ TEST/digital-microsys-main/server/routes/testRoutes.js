@@ -17,6 +17,7 @@ router.post('/', authorize('admin'), testController.createTest);
 router.put('/:id', authorize('admin'), testController.updateTest);
 router.delete('/:id', authorize('admin'), testController.deleteTest);
 router.put('/:id/publish', authorize('admin'), testController.publishTest);
+router.post('/:id/send', authorize('admin', 'trainer'), testController.sendTestToStudents);
 
 // Questions
 router.get('/:id/questions', testController.getQuestions);
