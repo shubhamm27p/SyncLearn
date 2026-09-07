@@ -311,10 +311,13 @@ export default function VideoMeetComponent() {
     }, []);
 
     useEffect(() => {
-        if (!askForUsername && localVideoRef.current && window.localStream) {
-            localVideoRef.current.srcObject = window.localStream;
+        if (!askForUsername && video && localVideoRef.current && window.localStream) {
+            if (localVideoRef.current.srcObject !== window.localStream) {
+                localVideoRef.current.srcObject = window.localStream;
+            }
+            localVideoRef.current.play().catch(e => console.log("Local video play error:", e));
         }
-    }, [askForUsername]);
+    }, [askForUsername, video]);
 
     const addTracksToConnection = (peerConn) => {
         if (window.localStream && peerConn) {
@@ -1426,7 +1429,15 @@ export default function VideoMeetComponent() {
                     >
                         {video ? (
                             <video
-                                ref={localVideoRef}
+                                ref={(ref) => {
+                                    localVideoRef.current = ref;
+                                    if (ref && window.localStream) {
+                                        if (ref.srcObject !== window.localStream) {
+                                            ref.srcObject = window.localStream;
+                                        }
+                                        ref.play().catch((err) => console.log("Local video play error:", err));
+                                    }
+                                }}
                                 autoPlay
                                 muted
                                 playsInline
