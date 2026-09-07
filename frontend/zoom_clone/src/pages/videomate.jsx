@@ -846,20 +846,30 @@ export default function VideoMeetComponent() {
             return;
         }
 
+        let quizId = `quiz_${Date.now()}`;
+
+        // Attempt persistence via API gracefully
         try {
-            let res;
             if (createQuizApi) {
-                res = await createQuizApi({
+                const res = await createQuizApi({
                     meetingId: meetingCode,
                     question: mcqQuestion,
                     options: mcqOptions,
                     correctOptionIndex: Number(mcqCorrectIndex),
                     creatorId: username || "Trainer"
                 });
+                if (res?.quiz?.id || res?.quiz?._id) {
+                    quizId = res.quiz.id || res.quiz._id;
+                }
             }
+        } catch (apiErr) {
+            console.warn("[handleLaunchNewQuiz] API persistence notice (using real-time memory engine):", apiErr);
+        }
 
+        // Guaranteed real-time Socket.IO launch to all students
+        try {
             const quizData = {
-                id: res?.quiz?._id || `quiz_${Date.now()}`,
+                id: quizId,
                 question: mcqQuestion,
                 options: mcqOptions,
                 correctOptionIndex: Number(mcqCorrectIndex)
@@ -873,7 +883,9 @@ export default function VideoMeetComponent() {
             setMcqModalOpen(false);
             setSnackbarMsg("Live MCQ Quiz launched to all students!");
             setOpenSnackbar(true);
-            fetchQuizRecords();
+            if (typeof fetchQuizRecords === "function") {
+                fetchQuizRecords();
+            }
         } catch (err) {
             console.error(err);
             setSnackbarMsg("Failed to create quiz.");

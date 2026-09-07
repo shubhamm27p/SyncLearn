@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import { Box, Button, Container, Divider, Typography } from "@mui/material";
+import ContactSupportModal from "../components/ContactSupportModal";
 
 const sections = [
     ["1. Acceptance of these terms", "By creating an account or using SyncLearn, you agree to these Terms and Conditions. If you are using SyncLearn on behalf of an institution or team, you confirm that you are authorized to accept these terms for that organization."],
@@ -16,6 +17,7 @@ const sections = [
 
 export default function TermsAndConditions() {
     const navigate = useNavigate();
+    const [supportModalOpen, setSupportModalOpen] = useState(false);
 
     return (
         <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa", color: "#101828" }}>
@@ -36,12 +38,27 @@ export default function TermsAndConditions() {
                     {sections.map(([title, body], index) => (
                         <Box key={title} sx={{ mb: index === sections.length - 1 ? 0 : 4 }}>
                             <Typography variant="h2" sx={{ fontSize: 20, fontWeight: 700, mb: 1.2, color: "#101828 !important" }}>{title}</Typography>
-                            <Typography sx={{ color: "#475467", lineHeight: 1.75 }}>{body}</Typography>
+                            {title.startsWith("7.") ? (
+                                <Typography sx={{ color: "#475467", lineHeight: 1.75 }}>
+                                    Questions about these terms can be sent to{" "}
+                                    <Box
+                                        component="span"
+                                        onClick={() => setSupportModalOpen(true)}
+                                        sx={{ color: "#0e71eb", fontWeight: 600, cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
+                                    >
+                                        synclearn.pvt@gmail.com
+                                    </Box>
+                                    . We may update these terms when the application or applicable requirements change. The latest version will be published on this page.
+                                </Typography>
+                            ) : (
+                                <Typography sx={{ color: "#475467", lineHeight: 1.75 }}>{body}</Typography>
+                            )}
                             {index < sections.length - 1 && <Divider sx={{ mt: 4 }} />}
                         </Box>
                     ))}
                 </Box>
             </Container>
+            <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
         </Box>
     );
 }

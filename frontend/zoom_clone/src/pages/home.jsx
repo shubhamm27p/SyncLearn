@@ -13,12 +13,14 @@ import PersonIcon from '@mui/icons-material/Person';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
+import ContactSupportModal from '../components/ContactSupportModal';
 
 function HomeComponent() {
     let navigate = useNavigate();
     const [meetingCode, setMeetingCode] = useState("");
     const [meetingCodeError, setMeetingCodeError] = useState("");
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
+    const [supportModalOpen, setSupportModalOpen] = useState(false);
 
     const { addToUserHistory } = useContext(AuthContext);
 
@@ -123,9 +125,10 @@ function HomeComponent() {
                             <ListItemText primary="Profile & Account" primaryTypographyProps={{ fontWeight: 600, fontSize: "0.9rem", color: "#101828" }} />
                         </MenuItem>
                         <MenuItem 
-                            component="a"
-                            href="mailto:synclearn.pvt@gmail.com"
-                            onClick={() => setSettingsAnchorEl(null)}
+                            onClick={() => {
+                                setSettingsAnchorEl(null);
+                                setSupportModalOpen(true);
+                            }}
                             sx={{ py: 1.2, px: 2, borderRadius: "8px", gap: 1.5, textDecoration: "none", color: "inherit" }}
                         >
                             <ListItemIcon sx={{ color: "#0e71eb", minWidth: "auto !important" }}>
@@ -293,6 +296,7 @@ function HomeComponent() {
                     </Box>
                 </Box>
             </Container> 
+            <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
         </Box>
     );
 }

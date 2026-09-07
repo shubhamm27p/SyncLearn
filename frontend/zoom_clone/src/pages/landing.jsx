@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import mobileImg from "../assets/img.png";
 import { Link, useNavigate } from "react-router-dom";
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import EmailIcon from '@mui/icons-material/Email';
 import { Box, Typography, Button, Container } from '@mui/material';
+import ContactSupportModal from "../components/ContactSupportModal";
 
 export default function LandingPage() {
     const router = useNavigate();
+    const [supportModalOpen, setSupportModalOpen] = useState(false);
 
     return (
         <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa", display: "flex", flexDirection: "column" }}>
@@ -33,8 +35,7 @@ export default function LandingPage() {
 
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
                     <Typography
-                        component="a"
-                        href="mailto:synclearn.pvt@gmail.com"
+                        onClick={() => setSupportModalOpen(true)}
                         sx={{
                             color: "#344054",
                             fontWeight: 500,
@@ -215,7 +216,7 @@ export default function LandingPage() {
                             </Typography>
                             <Typography variant="body2" sx={{ color: "#667085", fontSize: "14px" }}>
                                 Our dedicated support team is available to help. Reach out to us at{" "}
-                                <Box component="a" href="mailto:synclearn.pvt@gmail.com" sx={{ color: "#0e71eb", fontWeight: 600, textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
+                                <Box component="span" onClick={() => setSupportModalOpen(true)} sx={{ color: "#0e71eb", fontWeight: 600, cursor: "pointer", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
                                     synclearn.pvt@gmail.com
                                 </Box>
                             </Typography>
@@ -223,8 +224,7 @@ export default function LandingPage() {
                     </Box>
 
                     <Button
-                        component="a"
-                        href="mailto:synclearn.pvt@gmail.com"
+                        onClick={() => setSupportModalOpen(true)}
                         variant="outlined"
                         startIcon={<EmailIcon />}
                         sx={{
@@ -274,11 +274,13 @@ export default function LandingPage() {
                     <Typography component={Link} to="/terms" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
                         Terms & Conditions
                     </Typography>
-                    <Typography component="a" href="mailto:synclearn.pvt@gmail.com" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", display: "flex", alignItems: "center", gap: 0.5, "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                    <Typography onClick={() => setSupportModalOpen(true)} sx={{ color: "#667085", fontSize: "14px", cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", gap: 0.5, "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
                         <EmailIcon sx={{ fontSize: 16 }} /> Support
                     </Typography>
                 </Box>
             </Box>
+
+            <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
         </Box>
     );
 }

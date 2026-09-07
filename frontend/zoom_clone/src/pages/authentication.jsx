@@ -29,6 +29,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
+import ContactSupportModal from '../components/ContactSupportModal';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
@@ -106,6 +107,7 @@ export default function Authentication() {
   const [googleModalOpen, setGoogleModalOpen] = useState(false);
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   // 0: Log In, 1: Sign Up, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
@@ -677,11 +679,12 @@ export default function Authentication() {
         <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px', mt: 2.5, textAlign: 'center' }}>
           Need help?{' '}
           <Typography
-            component="a"
-            href="mailto:synclearn.pvt@gmail.com"
+            component="span"
+            onClick={() => setSupportModalOpen(true)}
             sx={{
               color: '#0e71eb',
               fontWeight: 600,
+              cursor: 'pointer',
               textDecoration: 'none',
               '&:hover': { textDecoration: 'underline' }
             }}
@@ -775,6 +778,8 @@ export default function Authentication() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
       </Container>
     </Box>
   );
