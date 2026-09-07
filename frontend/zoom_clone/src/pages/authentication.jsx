@@ -428,7 +428,6 @@ export default function Authentication() {
                   >
                     <MenuItem value="student">Student</MenuItem>
                     <MenuItem value="trainer">Trainer</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
                   </Select>
                 </Box>
               </>

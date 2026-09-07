@@ -31,12 +31,6 @@ export default function LandingPage() {
 
                 <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
                     <Typography
-                        onClick={() => router("/guest-call")}
-                        sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", cursor: "pointer", "&:hover": { color: "#0e71eb" } }}
-                    >
-                        Join as Guest
-                    </Typography>
-                    <Typography
                         onClick={() => router("/auth")}
                         sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", cursor: "pointer", "&:hover": { color: "#0e71eb" } }}
                     >
