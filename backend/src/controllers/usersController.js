@@ -50,10 +50,22 @@ const register = async (req, res) => {
         return res.status(400).json({ message: "Please provide all required fields" });
     }
 
+    if (name.trim().toLowerCase() === username.trim().toLowerCase()) {
+        return res.status(400).json({ message: "Full Name and Username/Email cannot be identical!" });
+    }
+
     try {
-        const { data: existingUser } = await supabase.from('users').select('*').eq('username', username).single();
+        const targetEmail = username.includes("@") ? username : `${username}@synclearn.edu`;
+
+        // Ensure no two users have the same username OR email
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('*')
+            .or(`username.eq.${username},email.eq.${username},username.eq.${targetEmail},email.eq.${targetEmail}`)
+            .maybeSingle();
+
         if (existingUser) {
-            return res.status(400).json({ message: "User already exists!" });
+            return res.status(400).json({ message: "A user with this username or email already exists!" });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -61,6 +73,7 @@ const register = async (req, res) => {
         const { error } = await supabase.from('users').insert([{
             name: name,
             username: username,
+            email: targetEmail,
             password: hashedPassword,
             role: role || 'student'
         }]);

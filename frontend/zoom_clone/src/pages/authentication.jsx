@@ -140,6 +140,9 @@ export default function Authentication() {
       else if (username.includes('@') && !/^\S+@\S+\.\S+$/.test(username)) {
         errors.username = "Invalid email format";
       }
+      if (name && username && name.trim().toLowerCase() === username.trim().toLowerCase()) {
+        errors.username = "Username/Email cannot be identical to Full Name";
+      }
       if (!password) errors.password = "Password is required";
       else if (password.length < 6) errors.password = "Password must be at least 6 characters";
     } else if (formState === 2) {
