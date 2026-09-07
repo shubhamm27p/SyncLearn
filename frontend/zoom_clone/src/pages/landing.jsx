@@ -12,7 +12,7 @@ export default function LandingPage() {
     const [supportModalOpen, setSupportModalOpen] = useState(false);
 
     return (
-        <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa", display: "flex", flexDirection: "column" }}>
+        <Box sx={{ height: "100vh", maxHeight: "100vh", backgroundColor: "#f8f9fa", display: "flex", flexDirection: "column", overflow: { xs: "auto", md: "hidden" } }}>
             {/* Navigation Header Bar */}
             <Box
                 component="nav"
@@ -21,7 +21,7 @@ export default function LandingPage() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     px: { xs: 3, md: 6 },
-                    py: 2,
+                    py: 1.5,
                     backgroundColor: "#ffffff",
                     borderBottom: "1px solid #eaecf0"
                 }}
@@ -67,7 +67,7 @@ export default function LandingPage() {
                             textTransform: "none",
                             borderRadius: "8px",
                             px: 3,
-                            py: 0.9,
+                            py: 0.8,
                             fontSize: "14px"
                         }}
                     >
@@ -77,14 +77,14 @@ export default function LandingPage() {
             </Box>
 
             {/* Main Hero Container */}
-            <Container maxWidth="lg" sx={{ flex: 1, display: "flex", alignItems: "center", py: 8 }}>
+            <Container maxWidth="lg" sx={{ flex: 1, display: "flex", alignItems: "center", py: { xs: 2, md: 1.5 } }}>
                 <Box
                     sx={{
                         display: "flex",
                         flexDirection: { xs: "column", md: "row" },
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: 8,
+                        gap: { xs: 3, md: 5 },
                         width: "100%"
                     }}
                 >
@@ -94,10 +94,10 @@ export default function LandingPage() {
                             variant="h1"
                             sx={{
                                 fontWeight: 800,
-                                fontSize: { xs: "32px", md: "42px" },
+                                fontSize: { xs: "28px", md: "36px" },
                                 color: "#101828",
                                 lineHeight: 1.2,
-                                mb: 2.5,
+                                mb: 1.5,
                                 letterSpacing: "-0.5px"
                             }}
                         >
@@ -108,9 +108,9 @@ export default function LandingPage() {
                             variant="body1"
                             sx={{
                                 color: "#475569",
-                                fontSize: "18px",
-                                mb: 4,
-                                lineHeight: 1.6
+                                fontSize: "16px",
+                                mb: 3,
+                                lineHeight: 1.5
                             }}
                         >
                             High quality video calls and interactive examinations anywhere, anytime with SyncLearn.
@@ -126,11 +126,11 @@ export default function LandingPage() {
                                 color: "#ffffff",
                                 "&:hover": { backgroundColor: "#0b5ed7" },
                                 fontWeight: 600,
-                                fontSize: "15px",
+                                fontSize: "14px",
                                 textTransform: "none",
                                 borderRadius: "8px",
                                 px: 3.5,
-                                py: 1.5,
+                                py: 1.2,
                                 boxShadow: "0 4px 14px rgba(14, 113, 235, 0.25)"
                             }}
                         >
@@ -152,13 +152,13 @@ export default function LandingPage() {
                                 backgroundColor: "#ffffff",
                                 border: "1px solid #e5e7eb",
                                 borderRadius: "16px",
-                                padding: "16px",
+                                padding: "12px",
                                 boxShadow: "0 10px 30px rgba(0, 0, 0, 0.04)",
                                 display: "flex",
                                 justifyContent: "center",
                                 alignItems: "center",
                                 width: "100%",
-                                maxWidth: 480
+                                maxWidth: 440
                             }}
                         >
                             <Box
@@ -167,7 +167,7 @@ export default function LandingPage() {
                                 alt="SyncLearn Media View"
                                 sx={{
                                     maxWidth: "100%",
-                                    maxHeight: 380,
+                                    maxHeight: { xs: 200, md: 240 },
                                     height: "auto",
                                     objectFit: "contain",
                                     borderRadius: "12px"
@@ -179,26 +179,26 @@ export default function LandingPage() {
             </Container>
 
             {/* Contact Support Banner Card */}
-            <Container maxWidth="lg" sx={{ pb: 6 }}>
+            <Container maxWidth="lg" sx={{ pb: { xs: 2, md: 1.5 } }}>
                 <Box
                     sx={{
                         backgroundColor: "#ffffff",
                         border: "1px solid #eaecf0",
                         borderRadius: "16px",
-                        p: { xs: 3, md: 4 },
+                        p: { xs: 2, md: 2.5 },
                         display: "flex",
                         flexDirection: { xs: "column", sm: "row" },
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: 3,
+                        gap: 2,
                         boxShadow: "0 4px 20px rgba(0, 0, 0, 0.03)"
                     }}
                 >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                         <Box
                             sx={{
-                                width: 52,
-                                height: 52,
+                                width: 44,
+                                height: 44,
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(14, 113, 235, 0.1)",
                                 display: "flex",
@@ -208,13 +208,13 @@ export default function LandingPage() {
                                 flexShrink: 0
                             }}
                         >
-                            <SupportAgentIcon sx={{ fontSize: 30 }} />
+                            <SupportAgentIcon sx={{ fontSize: 26 }} />
                         </Box>
                         <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 700, color: "#101828", fontSize: "18px", mb: 0.5 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, color: "#101828", fontSize: "16px", mb: 0.2 }}>
                                 Need Assistance or Have Questions?
                             </Typography>
-                            <Typography variant="body2" sx={{ color: "#667085", fontSize: "14px" }}>
+                            <Typography variant="body2" sx={{ color: "#667085", fontSize: "13px" }}>
                                 Our dedicated support team is available to help. Reach out to us at{" "}
                                 <Box component="span" onClick={() => setSupportModalOpen(true)} sx={{ color: "#0e71eb", fontWeight: 600, cursor: "pointer", textDecoration: "none", "&:hover": { textDecoration: "underline" } }}>
                                     synclearn.pvt@gmail.com
@@ -237,9 +237,9 @@ export default function LandingPage() {
                             fontWeight: 600,
                             textTransform: "none",
                             borderRadius: "8px",
-                            px: 3,
-                            py: 1.2,
-                            fontSize: "14px",
+                            px: 2.5,
+                            py: 1,
+                            fontSize: "13px",
                             whiteSpace: "nowrap"
                         }}
                     >
@@ -254,7 +254,7 @@ export default function LandingPage() {
                 sx={{
                     backgroundColor: "#ffffff",
                     borderTop: "1px solid #eaecf0",
-                    py: 3,
+                    py: 1.8,
                     px: { xs: 3, md: 6 },
                     display: "flex",
                     justifyContent: "space-between",
@@ -264,18 +264,18 @@ export default function LandingPage() {
                     mt: "auto"
                 }}
             >
-                <Typography variant="body2" sx={{ color: "#667085", fontSize: "14px" }}>
+                <Typography variant="body2" sx={{ color: "#667085", fontSize: "13px" }}>
                     © {new Date().getFullYear()} SyncLearn. All rights reserved.
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.5, sm: 2.5 }, flexWrap: "wrap" }}>
-                    <Typography component={Link} to="/about" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                    <Typography component={Link} to="/about" sx={{ color: "#667085", fontSize: "13px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
                         About SyncLearn
                     </Typography>
-                    <Typography component={Link} to="/terms" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                    <Typography component={Link} to="/terms" sx={{ color: "#667085", fontSize: "13px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
                         Terms & Conditions
                     </Typography>
-                    <Typography onClick={() => setSupportModalOpen(true)} sx={{ color: "#667085", fontSize: "14px", cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", gap: 0.5, "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
-                        <EmailIcon sx={{ fontSize: 16 }} /> Support
+                    <Typography onClick={() => setSupportModalOpen(true)} sx={{ color: "#667085", fontSize: "13px", cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", gap: 0.5, "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                        <EmailIcon sx={{ fontSize: 15 }} /> Support
                     </Typography>
                 </Box>
             </Box>

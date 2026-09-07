@@ -63,7 +63,7 @@ function HomeComponent() {
     };
 
     return (
-        <Box sx={{ minHeight: "100vh", backgroundColor: "#f8f9fa", display: "flex", flexDirection: "column" }}>
+        <Box sx={{ height: "100vh", maxHeight: "100vh", backgroundColor: "#f8f9fa", display: "flex", flexDirection: "column", overflow: { xs: "auto", md: "hidden" } }}>
             {/* Dynamic Responsive Header Navigation Bar */}
             <Box
                 component="nav"
@@ -248,14 +248,14 @@ function HomeComponent() {
             </Drawer>
 
             {/* Content Body */}
-            <Container maxWidth="lg" sx={{ flex: 1, display: "flex", alignItems: "center", py: 6 }}>
+            <Container maxWidth="lg" sx={{ flex: 1, display: "flex", alignItems: "center", py: { xs: 3, md: 2 }, overflow: "hidden" }}>
                 <Box
                     sx={{
                         display: "flex",
                         flexDirection: { xs: "column", md: "row" },
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: 6,
+                        gap: { xs: 3, md: 5 },
                         width: "100%"
                     }}
                 >
@@ -265,32 +265,32 @@ function HomeComponent() {
                         sx={{
                             flex: 1,
                             maxWidth: 520,
-                            p: 4,
+                            p: { xs: 3, md: 3.5 },
                             backgroundColor: "#ffffff",
                             border: "1px solid #e5e7eb",
                             borderRadius: "12px",
                             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.03)"
                         }}
                     >
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: "#111827", mb: 1, letterSpacing: "-0.3px" }}>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: "#111827", mb: 1, letterSpacing: "-0.3px", fontSize: { xs: "1.5rem", md: "1.85rem" } }}>
                             Quality Video Meetings & Live Examinations
                         </Typography>
-                        <Typography variant="body1" sx={{ color: "#475569", mb: 3.5, lineHeight: 1.6 }}>
+                        <Typography variant="body1" sx={{ color: "#475569", mb: 3, lineHeight: 1.5, fontSize: "0.95rem" }}>
                             Connect, collaborate, and conduct interactive examinations from anywhere with SyncLearn.
                         </Typography>
                         
                         <Button 
-                            onClick={() => navigate('/tests')}
+                            onClick={() => navigate(isAdmin ? '/admin/tests' : '/student/dashboard')}
                             variant="contained"
                             size="large"
-                            startIcon={<QuizIcon />}
+                            startIcon={isAdmin ? <AdminPanelSettingsIcon /> : <SchoolIcon />}
                             sx={{ 
                                 backgroundColor: "#0e71eb", 
                                 "&:hover": { backgroundColor: "#0b5ed7" },
                                 textTransform: "none", 
-                                fontSize: "1rem", 
+                                fontSize: "0.95rem", 
                                 fontWeight: 600, 
-                                py: 1.4, 
+                                py: 1.2, 
                                 px: 3, 
                                 borderRadius: "8px",
                                 width: "100%",
@@ -298,7 +298,7 @@ function HomeComponent() {
                                 boxShadow: "0 4px 12px rgba(14, 113, 235, 0.2)"
                             }}
                         >
-                            Create / Manage Tests
+                            {isAdmin ? "Manage Tests" : "Student Portal"}
                         </Button>
 
                         <Button 
@@ -310,13 +310,13 @@ function HomeComponent() {
                                 backgroundColor: "#10b981", 
                                 "&:hover": { backgroundColor: "#059669" },
                                 textTransform: "none", 
-                                fontSize: "1rem", 
+                                fontSize: "0.95rem", 
                                 fontWeight: 600, 
-                                py: 1.4, 
+                                py: 1.2, 
                                 px: 3, 
                                 borderRadius: "8px",
                                 width: "100%",
-                                mb: 3,
+                                mb: 2.5,
                                 boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
                             }}
                         >
@@ -343,7 +343,7 @@ function HomeComponent() {
                                         "& fieldset": { borderColor: "#d1d5db" },
                                         "&:hover fieldset": { borderColor: "#9ca3af" },
                                         "&.Mui-focused fieldset": { borderColor: "#0e71eb" },
-                                        "& input": { py: 1.4, fontSize: "0.95rem", color: "#111827" }
+                                        "& input": { py: 1.2, fontSize: "0.95rem", color: "#111827" }
                                     }
                                 }}
                             />
@@ -358,6 +358,7 @@ function HomeComponent() {
                                     fontSize: "0.95rem",
                                     fontWeight: 600,
                                     px: 3,
+                                    py: 1.2,
                                     borderRadius: "8px"
                                 }}
                             >
@@ -381,7 +382,7 @@ function HomeComponent() {
                             alt="SyncLearn Hero"
                             sx={{
                                 maxWidth: "100%",
-                                maxHeight: 380,
+                                maxHeight: { xs: 240, md: 320 },
                                 height: "auto",
                                 objectFit: "contain"
                             }}
