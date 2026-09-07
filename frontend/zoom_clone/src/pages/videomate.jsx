@@ -44,6 +44,7 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
 import ChatIcon from '@mui/icons-material/Chat';
+import SendIcon from '@mui/icons-material/Send';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SecurityIcon from '@mui/icons-material/Security';
 import InfoIcon from '@mui/icons-material/Info';
@@ -195,6 +196,7 @@ export default function VideoMeetComponent() {
     // Chat Sidebar Extra States
     const [chatRecipient, setChatRecipient] = useState("everyone");
     const chatEndRef = useRef(null);
+    const chatInputRef = useRef(null);
 
     // Self Video Drag & Position State
     const [selfVideoPos, setSelfVideoPos] = useState({ x: 20, y: window.innerHeight - 200 });
@@ -486,9 +488,9 @@ export default function VideoMeetComponent() {
         }
     }, [showModal, messages]);
 
-    let addMessage = (data, sender, socketIdSender, timeString) => {
+    let addMessage = (data, sender, socketIdSender, timeString, recipient) => {
         const timestamp = timeString || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setMessages((prev) => [...prev, { data, sender, socketIdSender, timestamp }]);
+        setMessages((prev) => [...prev, { data, sender, socketIdSender, timestamp, recipient: recipient || "everyone" }]);
         if (showModal) {
             setNewMessages(0);
         } else {
@@ -777,8 +779,6 @@ export default function VideoMeetComponent() {
     };
 
     let getMedia = () => {
-        setVideo(videoAvailable);
-        setAudio(audioAvailable);
         connectToSocketServer();
     };
 
@@ -846,7 +846,10 @@ export default function VideoMeetComponent() {
             if (navigator.mediaDevices.getDisplayMedia) {
                 navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                     .then(getDisplayMediaSucess)
-                    .catch((e) => console.log(e));
+                    .catch((e) => {
+                        console.log(e);
+                        setScreen(false);
+                    });
             }
         }
     };
@@ -862,9 +865,17 @@ export default function VideoMeetComponent() {
     };
 
     let sendMessage = () => {
-        if (!message.trim()) return;
-        socketRef.current.emit("chat-message", message, username || "User");
+        if (!message || !message.trim()) return;
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (socketRef.current) {
+            socketRef.current.emit("chat-message", message.trim(), username || "User", chatRecipient, timestamp);
+        }
         setMessage("");
+        setTimeout(() => {
+            if (chatInputRef.current) {
+                chatInputRef.current.focus();
+            }
+        }, 0);
     };
 
     let handleEndCall = () => {
@@ -1434,6 +1445,11 @@ export default function VideoMeetComponent() {
                                                     <div className={styles.chatSenderRow}>
                                                         <span className={`${styles.chatSender} ${isSelf ? styles.chatSenderSelf : ""}`}>
                                                             {isSelf ? "You" : item.sender}
+                                                            {item.recipient && item.recipient !== "everyone" && (
+                                                                <span style={{ fontSize: "0.7rem", color: "#f59e0b", marginLeft: "6px", fontWeight: "normal" }}>
+                                                                    (To {item.recipient === "host" ? "Host" : item.recipient})
+                                                                </span>
+                                                            )}
                                                         </span>
                                                         <span className={styles.chatTime}>
                                                             {item.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1478,37 +1494,55 @@ export default function VideoMeetComponent() {
                                         </Select>
                                     </div>
 
-                                    <TextField
-                                        multiline
-                                        maxRows={3}
-                                        size="small"
-                                        fullWidth
-                                        placeholder="Type message here..."
-                                        value={message || ""}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" && !e.shiftKey) {
-                                                e.preventDefault();
-                                                sendMessage();
-                                            }
-                                        }}
-                                        sx={{
-                                            bgcolor: "#2c2c2e",
-                                            borderRadius: "10px",
-                                            "& .MuiOutlinedInput-root": {
-                                                color: "#ffffff",
-                                                fontSize: "0.9rem",
-                                                "& fieldset": { borderColor: "#3a3a3e" },
-                                                "&:hover fieldset": { borderColor: "#0e71eb" },
-                                                "&.Mui-focused fieldset": { borderColor: "#0e71eb" }
-                                            }
-                                        }}
-                                    />
-
-                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", px: 0.5 }}>
-                                        <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.7rem" }}>
-                                            Press Enter to send
-                                        </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <TextField
+                                            inputRef={chatInputRef}
+                                            multiline
+                                            maxRows={3}
+                                            size="small"
+                                            fullWidth
+                                            placeholder="Type message here..."
+                                            value={message || ""}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    sendMessage();
+                                                }
+                                            }}
+                                            sx={{
+                                                bgcolor: "#2c2c2e",
+                                                borderRadius: "10px",
+                                                "& .MuiOutlinedInput-root": {
+                                                    color: "#ffffff",
+                                                    fontSize: "0.9rem",
+                                                    "& fieldset": { borderColor: "#3a3a3e" },
+                                                    "&:hover fieldset": { borderColor: "#0e71eb" },
+                                                    "&.Mui-focused fieldset": { borderColor: "#0e71eb" }
+                                                }
+                                            }}
+                                        />
+                                        <IconButton
+                                            onClick={sendMessage}
+                                            disabled={!message || !message.trim()}
+                                            sx={{
+                                                bgcolor: message && message.trim() ? "#0e71eb" : "#2c2c2e",
+                                                color: message && message.trim() ? "#ffffff" : "#64748b",
+                                                borderRadius: "10px",
+                                                p: 1.2,
+                                                transition: "all 0.2s ease-in-out",
+                                                "&:hover": {
+                                                    bgcolor: message && message.trim() ? "#0b5ed7" : "#2c2c2e"
+                                                },
+                                                "&.Mui-disabled": {
+                                                    bgcolor: "#242426",
+                                                    color: "#475569",
+                                                    opacity: 0.6
+                                                }
+                                            }}
+                                        >
+                                            <SendIcon sx={{ fontSize: 20 }} />
+                                        </IconButton>
                                     </Box>
                                 </div>
                             </div>

@@ -101,45 +101,43 @@ export const connectToSocket = (server) => {
 
         socket.authUser = null;
 
-        if (token) {
-            try {
-                const { data: user, error } = await supabase
-                    .from('users')
-                    .select('id, name, username, role, is_active, email, profile_pic')
-                    .eq('token', token)
-                    .maybeSingle();
-
-                if (user && user.is_active) {
-                    socket.authUser = user;
-                    return next();
-                }
-            } catch (error) {
-                console.warn('[Socket Auth Warning] Supabase lookup error, falling back to session payload:', error.message);
-            }
+        if (!token) {
+            return next(new Error('Authentication error: No token provided'));
         }
 
-        // Fallback guest / session user provisioning so meeting join never fails with redirect
-        const fallbackUsername = authPayload.username || authPayload.name || (token ? `User_${token.substring(0, 6)}` : `Guest_${socket.id.substring(0, 5)}`);
-        socket.authUser = {
-            id: socket.id,
-            name: fallbackUsername,
-            username: fallbackUsername,
-            role: authPayload.role || 'student',
-            is_active: true
-        };
-        return next();
+        try {
+            const { data: user, error } = await supabase
+                .from('users')
+                .select('id, name, username, role, is_active, email, profile_pic')
+                .eq('token', token)
+                .maybeSingle();
+
+            if (user && user.is_active) {
+                socket.authUser = user;
+                return next();
+            } else {
+                return next(new Error('Authentication error: Invalid or inactive token'));
+            }
+        } catch (error) {
+            console.warn('[Socket Auth Error] Supabase lookup failed:', error.message);
+            return next(new Error('Authentication error: Internal server error'));
+        }
     });
 
     io.on("connection", (socket) => {
         console.log("Socket connected:", socket.id);
 
         socket.on("join-call", (path, userMetaData = {}) => {
+            const role = socket.authUser?.role || userMetaData.role || "student";
             if (connections[path] === undefined) {
+                if (role !== "trainer" && role !== "admin") {
+                    socket.emit("kicked-from-call", { kickedBy: "System", reason: "Meeting code is invalid or meeting has not started yet." });
+                    return;
+                }
                 connections[path] = [];
             }
 
             const username = socket.authUser.username || socket.authUser.email;
-            const role = socket.authUser.role;
             if (!meetingHosts[path]) {
                 meetingHosts[path] = {
                     ownerUsername: username,
@@ -185,7 +183,9 @@ export const connectToSocket = (server) => {
                         "chat-message", 
                         messages[path][a]['data'], 
                         messages[path][a]['sender'], 
-                        messages[path][a]['socket-id-sender']
+                        messages[path][a]['socket-id-sender'],
+                        messages[path][a]['timestamp'],
+                        messages[path][a]['recipient']
                     );
                 }
             }
@@ -456,17 +456,25 @@ export const connectToSocket = (server) => {
             }
         });
 
-        socket.on("chat-message", (data, sender) => {
+        socket.on("chat-message", (data, sender, recipient = "everyone", timestamp) => {
             const userRoom = socketUserMap[socket.id]?.room;
             if (userRoom && connections[userRoom]) {
                 if (messages[userRoom] === undefined) {
                     messages[userRoom] = [];
                 }
 
-                messages[userRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id });
+                const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                messages[userRoom].push({ 
+                    'sender': sender, 
+                    "data": data, 
+                    "socket-id-sender": socket.id,
+                    "recipient": recipient,
+                    "timestamp": timeStr
+                });
 
                 connections[userRoom].forEach((elem) => {
-                    io.to(elem).emit("chat-message", data, sender, socket.id);
+                    io.to(elem).emit("chat-message", data, sender, socket.id, timeStr, recipient);
                 });
             }
         });
