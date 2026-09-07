@@ -97,6 +97,7 @@ export default function VideoMeetComponent() {
 
     const connectionsRef = useRef({});
     const iceCandidatesQueueRef = useRef({});
+    const autoLeaveTimerRef = useRef(null);
 
     const {
         userRole: contextRole,
@@ -708,6 +709,10 @@ export default function VideoMeetComponent() {
     };
 
     let handleEndCall = () => {
+        if (autoLeaveTimerRef.current) {
+            clearTimeout(autoLeaveTimerRef.current);
+            autoLeaveTimerRef.current = null;
+        }
         try {
             if (window.localStream) {
                 window.localStream.getTracks().forEach(track => track.stop());
@@ -722,6 +727,40 @@ export default function VideoMeetComponent() {
 
         routeTo("/home");
     };
+
+    // Auto-leave meeting after 5 minutes if no other participants exist in the room
+    useEffect(() => {
+        if (!askForUsername && socketIdRef.current) {
+            const otherParticipants = roomParticipants.filter(p => p.socketId && p.socketId !== socketIdRef.current);
+            const isAlone = otherParticipants.length === 0 && videos.length === 0;
+
+            if (isAlone) {
+                if (!autoLeaveTimerRef.current) {
+                    setSnackbarMsg("No other participants in meeting. Auto-leaving in 5 minutes if no one joins.");
+                    setOpenSnackbar(true);
+
+                    autoLeaveTimerRef.current = setTimeout(() => {
+                        alert("Auto-leaving meeting: No other participants were present for 5 minutes.");
+                        handleEndCall();
+                    }, 5 * 60 * 1000); // 5 minutes (300,000 ms)
+                }
+            } else {
+                if (autoLeaveTimerRef.current) {
+                    clearTimeout(autoLeaveTimerRef.current);
+                    autoLeaveTimerRef.current = null;
+                    setSnackbarMsg("Participant joined. Auto-leave timer cancelled.");
+                    setOpenSnackbar(true);
+                }
+            }
+        }
+
+        return () => {
+            if (autoLeaveTimerRef.current) {
+                clearTimeout(autoLeaveTimerRef.current);
+                autoLeaveTimerRef.current = null;
+            }
+        };
+    }, [askForUsername, roomParticipants, videos]);
 
     const handleRemoveParticipant = (targetSocketId, targetUsername) => {
         if (!socketRef.current) return;
