@@ -60,7 +60,15 @@ const ManageCodingProblems = () => {
       setTestTitle(testRes.data.data?.title || 'Test');
       setProblems(probRes.data.data || []);
     } catch (err) {
-      toast.error('Failed to load data');
+      console.warn("Server unavailable, loading from local storage:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const localTest = localTests.find(t => t._id === testId || t.id === testId);
+      if (localTest) {
+        setTestTitle(localTest.title || 'Local Test');
+        setProblems(localTest.codingProblems || []);
+      } else {
+        toast.error('Failed to load data');
+      }
     } finally {
       setLoading(false);
     }
@@ -156,7 +164,42 @@ const ManageCodingProblems = () => {
       setShowForm(false);
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save');
+      console.warn("Server save failed, using local storage fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const testIndex = localTests.findIndex(t => t._id === testId || t.id === testId);
+      
+      if (testIndex !== -1 || testId.startsWith('test_local_')) {
+        let testToUpdate = testIndex !== -1 ? localTests[testIndex] : { _id: testId, title: 'Local Test', codingProblems: [] };
+        if (!testToUpdate.codingProblems) testToUpdate.codingProblems = [];
+        
+        if (editingId) {
+          testToUpdate.codingProblems = testToUpdate.codingProblems.map(p => 
+            p._id === editingId ? { ...form, _id: editingId, testId } : p
+          );
+          toast.success('Problem updated (offline)');
+        } else {
+          testToUpdate.codingProblems.push({
+            _id: `coding_${Date.now()}`,
+            testId,
+            ...form,
+            createdAt: new Date().toISOString()
+          });
+          toast.success('Problem created (offline)');
+        }
+        
+        if (testIndex !== -1) {
+          localTests[testIndex] = testToUpdate;
+        } else {
+          localTests.unshift(testToUpdate);
+        }
+        
+        localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        resetForm();
+        setShowForm(false);
+        fetchData();
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to save');
+      }
     } finally {
       setSaving(false);
     }
@@ -171,7 +214,18 @@ const ManageCodingProblems = () => {
       setDeleteModal({ open: false, problem: null });
       fetchData();
     } catch (err) {
-      toast.error('Failed to delete');
+      console.warn("Delete failed, using local storage fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const testIndex = localTests.findIndex(t => t._id === testId || t.id === testId);
+      if (testIndex !== -1 && localTests[testIndex].codingProblems) {
+        localTests[testIndex].codingProblems = localTests[testIndex].codingProblems.filter(p => p._id !== deleteModal.problem._id);
+        localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        toast.success('Problem deleted (offline)');
+        setDeleteModal({ open: false, problem: null });
+        fetchData();
+      } else {
+        toast.error('Failed to delete');
+      }
     } finally {
       setDeleting(false);
     }

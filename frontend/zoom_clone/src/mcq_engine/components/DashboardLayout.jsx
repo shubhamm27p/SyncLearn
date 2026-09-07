@@ -51,20 +51,19 @@ const DashboardLayout = () => {
         icon: <AssessmentIcon />,
         active: location.pathname === '/admin/results'
       }
-    ] : [
-      {
-        label: 'Student Portal',
-        path: '/student/dashboard',
-        icon: <SchoolIcon />,
-        active: location.pathname === '/student/dashboard'
-      },
-      {
-        label: 'My Results',
-        path: '/student/results',
-        icon: <AssessmentIcon />,
-        active: location.pathname.startsWith('/student/results')
-      }
-    ]),
+    ] : []),
+    {
+      label: isAdmin ? 'Assessment Portal' : 'Student Portal',
+      path: '/student/dashboard',
+      icon: <SchoolIcon />,
+      active: location.pathname === '/student/dashboard'
+    },
+    {
+      label: 'My Results',
+      path: '/student/results',
+      icon: <AssessmentIcon />,
+      active: location.pathname.startsWith('/student/results')
+    },
     {
       label: 'Meeting History',
       path: '/history',

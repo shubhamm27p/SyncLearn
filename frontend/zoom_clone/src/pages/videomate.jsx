@@ -425,6 +425,17 @@ export default function VideoMeetComponent() {
 
     useEffect(() => {
         getPermission();
+        
+        return () => {
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => {
+                    try {
+                        track.stop();
+                    } catch (e) {}
+                });
+                window.localStream = null;
+            }
+        };
     }, []);
 
     useEffect(() => {

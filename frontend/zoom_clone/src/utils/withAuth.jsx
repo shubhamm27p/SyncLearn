@@ -15,17 +15,8 @@ const withAuth = (WrappedComponent) => {
             const hasAuth = Boolean((token && storedUser) || isAdmin);
 
             if (!hasAuth) {
-                // Provision guest session for seamless meeting room joining
-                const guestToken = `guest-${Math.random().toString(36).substring(2, 10)}`;
-                const guestUser = {
-                    id: `guest-${Math.random().toString(36).substring(2, 8)}`,
-                    username: `Guest_${Math.floor(1000 + Math.random() * 9000)}`,
-                    name: `Guest User`,
-                    role: "student"
-                };
-                localStorage.setItem("token", guestToken);
-                localStorage.setItem("currentUser", JSON.stringify(guestUser));
-                localStorage.setItem("userRole", "student");
+                navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
+                return;
             }
             setIsReady(true);
         }, [location]);

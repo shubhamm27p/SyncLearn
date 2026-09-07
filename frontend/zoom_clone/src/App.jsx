@@ -85,7 +85,7 @@ function App() {
                 </Route>
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
                 <Route element={<DashboardLayout />}>
                   <Route path='/tests' element={<Dashboard />} />
                   <Route path='/student/dashboard' element={<StudentDashboard />} />
@@ -98,7 +98,7 @@ function App() {
                 <Route path='/admin/combined-result/:testId/:studentId' element={<AdminCombinedResult />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+              <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
                 <Route path='/student/test/:id' element={<TakeTest />} />
                 <Route path='/test/:testId/take' element={<TakeTest />} />
                 <Route path='/student/coding-test/:id' element={<TakeCodingTest />} />
