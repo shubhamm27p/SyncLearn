@@ -55,7 +55,11 @@ const ViewResults = () => {
       if (res.data?.data) {
         setTests(res.data.data);
       }
-    } catch { toast.error('Failed to load tests'); }
+    } catch {
+      console.warn("ViewResults API unavailable, loading local tests database:");
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      setTests(localTests);
+    }
     finally { setInitialLoading(false); }
   };
 
@@ -67,7 +71,15 @@ const ViewResults = () => {
         setResults(res.data.data.results || []);
         setTestInfo(res.data.data.test || null);
       }
-    } catch { toast.error('Failed to load results'); }
+    } catch {
+      console.warn("ViewResults API unavailable, checking local submissions database:");
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const foundTest = localTests.find(t => t._id === testId || t.id === testId);
+      const filtered = localSubmissions.filter(s => s.testId === testId || s.test_id === testId || s.testId?._id === testId);
+      setResults(filtered);
+      setTestInfo(foundTest || null);
+    }
     finally { setLoading(false); }
   };
 

@@ -24,6 +24,9 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlined";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
@@ -229,6 +232,48 @@ export default function AdminDashboard() {
               <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>{item.label}</Typography>
             </Box>
           ))}
+
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 2 }} />
+
+          <Typography sx={{ color: "#334155", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5, px: 1 }}>
+            Test Management
+          </Typography>
+          <Box
+            onClick={() => navigate("/admin/tests")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(14,113,235,0.12)", color: "#60a5fa" },
+            }}
+          >
+            <AssignmentIcon fontSize="small" sx={{ color: "#0e71eb" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Manage Tests</Typography>
+          </Box>
+          <Box
+            onClick={() => navigate("/admin/tests/create")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+            }}
+          >
+            <AddCircleOutlineIcon fontSize="small" sx={{ color: "#10b981" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Create New Test</Typography>
+          </Box>
+          <Box
+            onClick={() => navigate("/admin/results")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+            }}
+          >
+            <AssessmentIcon fontSize="small" sx={{ color: "#f59e0b" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>View Test Results</Typography>
+          </Box>
 
           <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 2 }} />
 

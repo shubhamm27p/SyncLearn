@@ -45,8 +45,14 @@ const ViewResults = () => {
   const fetchTests = async () => {
     try {
       const res = await API.get('/tests');
-      setTests(res.data.data);
-    } catch { toast.error('Failed to load tests'); }
+      if (res.data?.data) {
+        setTests(res.data.data);
+      }
+    } catch {
+      console.warn("ViewResults API unavailable, loading local tests database:");
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      setTests(localTests);
+    }
     finally { setInitialLoading(false); }
   };
 
@@ -54,9 +60,19 @@ const ViewResults = () => {
     setLoading(true);
     try {
       const res = await API.get(`/results/test/${testId}`);
-      setResults(res.data.data.results);
-      setTestInfo(res.data.data.test);
-    } catch { toast.error('Failed to load results'); }
+      if (res.data?.data) {
+        setResults(res.data.data.results || []);
+        setTestInfo(res.data.data.test || null);
+      }
+    } catch {
+      console.warn("ViewResults API unavailable, checking local submissions database:");
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      const filtered = localSubmissions.filter(s => String(s.testId) === String(testId) || String(s.test?._id) === String(testId));
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const foundTest = localTests.find(t => String(t._id || t.id) === String(testId));
+      setResults(filtered);
+      setTestInfo(foundTest || null);
+    }
     finally { setLoading(false); }
   };
 
