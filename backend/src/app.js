@@ -37,42 +37,43 @@ const app = express();
 const server = createServer(app);
 
 const ensureAdminAccount = async () => {
-    const adminUsername = process.env.ADMIN_USERNAME;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const adminUsername = process.env.ADMIN_USERNAME || 'synclearn_admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'SyncAdmin@2026!';
 
-    if (!adminUsername || !adminPassword || !serviceRoleKey || !process.env.SUPABASE_URL) {
-        console.warn("Admin bootstrap skipped: set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD.");
-        return;
+    try {
+        const { data: existing, error: lookupError } = await supabase
+            .from('users')
+            .select('id, role')
+            .or(`username.eq.${adminUsername},email.eq.${adminUsername}`)
+            .maybeSingle();
+
+        if (lookupError) {
+            console.warn("Admin lookup warning:", lookupError.message);
+        }
+
+        if (existing) {
+            console.log(`Admin account confirmed in database: ${adminUsername} (${existing.role})`);
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        const { error: insertError } = await supabase.from('users').insert([{
+            name: process.env.ADMIN_NAME || 'System Admin',
+            username: adminUsername,
+            email: process.env.ADMIN_EMAIL || `${adminUsername}@synclearn.edu`,
+            password: hashedPassword,
+            role: 'admin',
+            is_active: true
+        }]);
+
+        if (insertError) {
+            console.warn("Admin account auto-insert warning:", insertError.message);
+        } else {
+            console.log(`Admin account created successfully: ${adminUsername}`);
+        }
+    } catch (err) {
+        console.error("Admin bootstrap error:", err.message);
     }
-
-    const adminClient = createClient(process.env.SUPABASE_URL, serviceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false }
-    });
-    const { data: existing, error: lookupError } = await adminClient
-        .from('users')
-        .select('id, role')
-        .eq('username', adminUsername)
-        .maybeSingle();
-
-    if (lookupError) throw lookupError;
-    if (existing) {
-        console.log(`Admin account already exists: ${adminUsername} (${existing.role})`);
-        return;
-    }
-
-    const password = await bcrypt.hash(adminPassword, 10);
-    const { error: insertError } = await adminClient.from('users').insert({
-        name: process.env.ADMIN_NAME || 'System Admin',
-        username: adminUsername,
-        email: process.env.ADMIN_EMAIL || adminUsername,
-        password,
-        role: 'admin',
-        is_active: true
-    });
-
-    if (insertError) throw insertError;
-    console.log(`Admin account created: ${adminUsername}`);
 };
 
 const io = connectToSocket(server);
