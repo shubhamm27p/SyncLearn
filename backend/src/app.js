@@ -5,6 +5,8 @@ import helmet from "helmet";
 import { connectToSocket } from "./controllers/socketmanager.js";
 import userRouter from "./routes/usersRouter.js";
 import { supabase } from "./utils/supabase.js";
+import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcrypt";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
@@ -33,6 +35,45 @@ process.on('unhandledRejection', (err) => {
 
 const app = express();
 const server = createServer(app);
+
+const ensureAdminAccount = async () => {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!adminUsername || !adminPassword || !serviceRoleKey || !process.env.SUPABASE_URL) {
+        console.warn("Admin bootstrap skipped: set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_USERNAME, and ADMIN_PASSWORD.");
+        return;
+    }
+
+    const adminClient = createClient(process.env.SUPABASE_URL, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+    const { data: existing, error: lookupError } = await adminClient
+        .from('users')
+        .select('id, role')
+        .eq('username', adminUsername)
+        .maybeSingle();
+
+    if (lookupError) throw lookupError;
+    if (existing) {
+        console.log(`Admin account already exists: ${adminUsername} (${existing.role})`);
+        return;
+    }
+
+    const password = await bcrypt.hash(adminPassword, 10);
+    const { error: insertError } = await adminClient.from('users').insert({
+        name: process.env.ADMIN_NAME || 'System Admin',
+        username: adminUsername,
+        email: process.env.ADMIN_EMAIL || adminUsername,
+        password,
+        role: 'admin',
+        is_active: true
+    });
+
+    if (insertError) throw insertError;
+    console.log(`Admin account created: ${adminUsername}`);
+};
 
 const io = connectToSocket(server);
 
@@ -84,6 +125,7 @@ if (process.env.NODE_ENV !== 'test') {
             const { data, error } = await supabase.from('users').select('id').limit(1);
             if (error) throw error;
             console.log("Supabase connection established successfully.");
+            await ensureAdminAccount();
         } catch (err) {
             console.error("Supabase Connection Error:", err.message);
         }
