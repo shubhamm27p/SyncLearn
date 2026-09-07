@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd frontend/zoom_clone && npm install && npm run build",
+  "outputDirectory": "frontend/zoom_clone/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

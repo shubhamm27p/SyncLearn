@@ -33,8 +33,19 @@ function HomeComponent() {
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
 
-    const { addToUserHistory, user } = useContext(AuthContext) || {};
-    const activeUser = user || JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+    const getActiveUser = () => {
+        try {
+            const sUser = sessionStorage.getItem('user');
+            const lUser = localStorage.getItem('user') || localStorage.getItem('currentUser');
+            if (user) return user;
+            if (sUser && sUser !== 'undefined' && sUser !== 'null') return JSON.parse(sUser);
+            if (lUser && lUser !== 'undefined' && lUser !== 'null') return JSON.parse(lUser);
+            return {};
+        } catch (e) {
+            return {};
+        }
+    };
+    const activeUser = getActiveUser();
     const isAdmin = sessionStorage.getItem('admin_authenticated') === 'true' || activeUser?.role === 'admin' || activeUser?.role === 'trainer';
 
     let handleJoinVideoCall = async () => {

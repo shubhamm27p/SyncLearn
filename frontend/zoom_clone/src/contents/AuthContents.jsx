@@ -24,8 +24,15 @@ export const AuthProvider = ({children}) => {
     
     const router = useNavigate();
 
-    const [userRole, setUserRole] = useState(localStorage.getItem("userRole") || "student");
-    const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem("currentUser") || "null"));
+    const getInitialUser = () => {
+        try {
+            const val = localStorage.getItem("currentUser");
+            return val && val !== "undefined" && val !== "null" ? JSON.parse(val) : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const [currentUser, setCurrentUser] = useState(getInitialUser());
 
     const handleRegister = async (name, username, password, role = "student") => {
         try { 

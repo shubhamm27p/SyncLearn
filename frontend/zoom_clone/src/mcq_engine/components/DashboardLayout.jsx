@@ -23,9 +23,20 @@ const DashboardLayout = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { user } = useContext(AuthContext) || {};
-  const activeUser = user || JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
-  const isAdmin = sessionStorage.getItem('admin_authenticated') === 'true' || activeUser.role === 'admin' || activeUser.role === 'trainer';
+  const getActiveUser = () => {
+    try {
+      const sUser = sessionStorage.getItem('user');
+      const lUser = localStorage.getItem('user') || localStorage.getItem('currentUser');
+      if (user) return user;
+      if (sUser && sUser !== 'undefined' && sUser !== 'null') return JSON.parse(sUser);
+      if (lUser && lUser !== 'undefined' && lUser !== 'null') return JSON.parse(lUser);
+      return {};
+    } catch (e) {
+      return {};
+    }
+  };
+  const activeUser = getActiveUser();
+  const isAdmin = sessionStorage.getItem('admin_authenticated') === 'true' || activeUser?.role === 'admin' || activeUser?.role === 'trainer';
 
   const navItems = [
     ...(isAdmin ? [

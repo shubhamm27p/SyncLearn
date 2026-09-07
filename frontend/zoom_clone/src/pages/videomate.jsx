@@ -112,7 +112,15 @@ export default function VideoMeetComponent() {
         getQuizRecordsApi
     } = useContext(AuthContext);
 
-    const storedUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+    const getStoredUser = () => {
+        try {
+            const val = localStorage.getItem("currentUser");
+            return val && val !== "undefined" && val !== "null" ? JSON.parse(val) : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const storedUser = getStoredUser();
     const authUser = currentUser || storedUser || userData;
     const token = localStorage.getItem("token");
     const isAuthenticated = Boolean(token && (authUser?.name || authUser?.username));
