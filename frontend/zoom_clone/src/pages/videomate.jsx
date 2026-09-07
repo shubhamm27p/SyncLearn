@@ -375,6 +375,14 @@ export default function VideoMeetComponent() {
             if (userMediaStream) {
                 setVideoAvailable(true);
                 setAudioAvailable(true);
+
+                userMediaStream.getAudioTracks().forEach(track => {
+                    track.enabled = Boolean(audio);
+                });
+                userMediaStream.getVideoTracks().forEach(track => {
+                    track.enabled = Boolean(video);
+                });
+
                 window.localStream = userMediaStream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = userMediaStream;
@@ -389,6 +397,11 @@ export default function VideoMeetComponent() {
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 setVideoAvailable(true);
                 setAudioAvailable(false);
+
+                videoStream.getVideoTracks().forEach(track => {
+                    track.enabled = Boolean(video);
+                });
+
                 window.localStream = videoStream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = videoStream;
@@ -521,8 +534,8 @@ export default function VideoMeetComponent() {
     let connectToSocketServer = () => {
         socketRef.current = io.connect(server_url, {
             auth: {
-                token: token || localStorage.getItem("token") || `guest-${Math.random().toString(36).substring(2, 8)}`,
-                username: defaultUsername || username || "Guest User",
+                token: token || localStorage.getItem("token") || "",
+                username: defaultUsername || username,
                 role: userRole || "student"
             }
         });
@@ -809,6 +822,21 @@ export default function VideoMeetComponent() {
         }
     };
 
+    let stopScreenShare = () => {
+        if (window.localStream) {
+            window.localStream.getTracks().forEach(track => {
+                try {
+                    track.stop();
+                } catch (e) {
+                    console.log("Track stop error:", e);
+                }
+            });
+            window.localStream = null;
+        }
+        setScreen(false);
+        getPermission();
+    };
+
     let handleAudio = () => {
         const nextAudio = !audio;
         if (window.localStream) {
@@ -823,6 +851,22 @@ export default function VideoMeetComponent() {
     };
 
     let getDisplayMediaSucess = (stream) => {
+        // Bug 1 Fix: Strictly enforce global user audio state on all captured screen share audio tracks (system audio)
+        stream.getAudioTracks().forEach(track => {
+            track.enabled = Boolean(audio);
+        });
+
+        // Preserve & sync microphone audio track if previous stream had it
+        if (window.localStream) {
+            const micAudioTracks = window.localStream.getAudioTracks();
+            micAudioTracks.forEach(micTrack => {
+                micTrack.enabled = Boolean(audio);
+                if (!stream.getAudioTracks().some(t => t.id === micTrack.id)) {
+                    stream.addTrack(micTrack);
+                }
+            });
+        }
+
         window.localStream = stream;
         if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
@@ -830,45 +874,45 @@ export default function VideoMeetComponent() {
 
         const videoTrack = stream.getVideoTracks()[0];
 
+        // Replace tracks on all active WebRTC peer connections
         for (let id in connectionsRef.current) {
             if (id === socketIdRef.current) continue;
-
-            const senders = connectionsRef.current[id].getSenders();
-            const sender = senders.find(s => s.track && s.track.kind === 'video');
-            if (sender) {
-                sender.replaceTrack(videoTrack);
-            } else {
-                connectionsRef.current[id].addTrack(videoTrack, stream);
-            }
+            addTracksToConnection(connectionsRef.current[id]);
         }
 
-        videoTrack.onended = () => {
-            setScreen(false);
-            getPermission();
-        };
-    };
-
-    let getDisplayMedia = () => {
-        if (screen) {
-            if (navigator.mediaDevices.getDisplayMedia) {
-                navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-                    .then(getDisplayMediaSucess)
-                    .catch((e) => {
-                        console.log(e);
-                        setScreen(false);
-                    });
-            }
+        if (videoTrack) {
+            videoTrack.onended = () => {
+                stopScreenShare();
+            };
         }
     };
 
     useEffect(() => {
+        let getDisplayMedia = () => {
+            if (screen) {
+                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                        .then(getDisplayMediaSucess)
+                        .catch((e) => {
+                            console.log("getDisplayMedia error:", e);
+                            setScreen(false);
+                        });
+                }
+            }
+        };
+
         if (screen !== undefined && screen !== false) {
             getDisplayMedia();
         }
     }, [screen]);
 
     let handleScreen = () => {
-        setScreen(!screen);
+        // Bug 2 Fix: If already sharing, explicitly stop all tracks and revert to camera stream
+        if (screen) {
+            stopScreenShare();
+        } else {
+            setScreen(true);
+        }
     };
 
     let sendMessage = () => {
@@ -937,6 +981,7 @@ export default function VideoMeetComponent() {
                 autoLeaveTimerRef.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [askForUsername, roomParticipants, videos]);
 
     const handleRemoveParticipant = (targetSocketId, targetUsername) => {
@@ -1065,14 +1110,18 @@ export default function VideoMeetComponent() {
     };
 
     useEffect(() => {
+        const currentConnections = connectionsRef.current;
+        const currentSocket = socketRef.current;
+
         return () => {
-            for (let id in connectionsRef.current) {
+            for (let id in currentConnections) {
                 try {
-                    connectionsRef.current[id].close();
+                    currentConnections[id].close();
                 } catch (e) {}
+                delete currentConnections[id];
             }
-            if (socketRef.current) {
-                socketRef.current.disconnect();
+            if (currentSocket) {
+                currentSocket.disconnect();
             }
         };
     }, []);
