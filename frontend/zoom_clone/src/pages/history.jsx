@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 const server_url = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export default function History() {
-    const { getHistoryOfUser, clearUserHistoryApi, deleteMeetingHistoryApi } = useContext(AuthContext);
+    const { getHistoryOfUser, getActiveRoomsApi, clearUserHistoryApi, deleteMeetingHistoryApi } = useContext(AuthContext);
     const [meetings, setMeetings] = useState([]);
     const [activeRooms, setActiveRooms] = useState([]);
     const routeTo = useNavigate();
@@ -30,16 +30,14 @@ export default function History() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const history = await getHistoryOfUser();
+                const [history, activeRoomData] = await Promise.all([
+                    getHistoryOfUser(),
+                    getActiveRoomsApi()
+                ]);
                 if (Array.isArray(history)) {
                     setMeetings(history);
                 }
-
-                const response = await fetch(`${server_url}/api/v1/users/active-rooms`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setActiveRooms(data.activeRooms || []);
-                }
+                setActiveRooms(activeRoomData?.activeRooms || []);
             } catch (err) {
                 console.error(err);
             }

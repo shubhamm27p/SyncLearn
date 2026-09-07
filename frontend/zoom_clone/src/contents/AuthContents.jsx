@@ -10,6 +10,14 @@ const client = axios.create({
     baseURL: `${serverUrl}/api/v1/users`
 });
 
+client.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 export const AuthProvider = ({children}) => {
     const authContext = useContext(AuthContext);
     const [userData, setUserData] = useState(authContext);
@@ -70,11 +78,7 @@ export const AuthProvider = ({children}) => {
 
     const getHistoryOfUser = async () => {
         try {
-            let request = await client.get("/get_all_activity", {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
+            let request = await client.get("/get_all_activity");
             return request.data;
         } catch (error) {
             throw error;
@@ -83,11 +87,7 @@ export const AuthProvider = ({children}) => {
 
     const clearUserHistoryApi = async () => {
         try {
-            let request = await client.delete("/clear_user_history", {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
+            let request = await client.delete("/clear_user_history");
             return request.data;
         } catch (error) {
             throw error;
@@ -96,11 +96,7 @@ export const AuthProvider = ({children}) => {
 
     const deleteMeetingHistoryApi = async (meetingId) => {
         try {
-            let request = await client.delete(`/delete_meeting_history/${meetingId}`, {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
+            let request = await client.delete(`/delete_meeting_history/${meetingId}`);
             return request.data;
         } catch (error) {
             throw error;
@@ -128,6 +124,11 @@ export const AuthProvider = ({children}) => {
         } catch (err) {
             throw err;
         }
+    };
+
+    const getActiveRoomsApi = async () => {
+        const request = await client.get("/active-rooms");
+        return request.data;
     };
 
     const handleForgotPassword = async (username) => {
@@ -266,6 +267,7 @@ export const AuthProvider = ({children}) => {
         getHistoryOfUser,
         clearUserHistoryApi,
         deleteMeetingHistoryApi,
+        getActiveRoomsApi,
         handleRegister,
         handleLogin,
         handleGoogleLogin,

@@ -6,8 +6,12 @@ import crypto from "crypto";
 import { sendPasswordResetCodeEmail } from "../utils/sendEmail.js";
 
 let inMemorySiteStatus = true;
+let siteStatusCache = { value: null, expiresAt: 0 };
 
 export const getSiteOnlineStatus = async () => {
+    if (siteStatusCache.expiresAt > Date.now()) {
+        return siteStatusCache.value;
+    }
     try {
         const { data, error } = await supabase
             .from('site_settings')
@@ -17,6 +21,7 @@ export const getSiteOnlineStatus = async () => {
 
         if (error) {
             console.warn("[getSiteOnlineStatus] Supabase table 'site_settings' unavailable, using fallback:", error.message);
+            siteStatusCache = { value: inMemorySiteStatus, expiresAt: Date.now() + 5000 };
             return inMemorySiteStatus;
         }
 
@@ -31,12 +36,15 @@ export const getSiteOnlineStatus = async () => {
             } catch (createErr) {
                 console.warn("[getSiteOnlineStatus] Error creating default site_settings row:", createErr.message);
             }
+            siteStatusCache = { value: inMemorySiteStatus, expiresAt: Date.now() + 5000 };
             return inMemorySiteStatus;
         }
 
+        siteStatusCache = { value: data.is_online, expiresAt: Date.now() + 5000 };
         return data.is_online;
     } catch (e) {
         console.warn("[getSiteOnlineStatus] Exception caught, defaulting site_online to true:", e.message || e);
+        siteStatusCache = { value: inMemorySiteStatus, expiresAt: Date.now() + 5000 };
         return inMemorySiteStatus;
     }
 };
@@ -55,6 +63,7 @@ export const updateSiteStatus = async (req, res) => {
         return res.status(400).json({ message: 'isOnline must be a boolean' });
     }
     inMemorySiteStatus = req.body.isOnline;
+    siteStatusCache = { value: inMemorySiteStatus, expiresAt: Date.now() + 5000 };
     try {
         const { data, error } = await supabase
             .from('site_settings')
@@ -79,12 +88,16 @@ const login = async (req, res) => {
     }
 
     try {
-        const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
+        const [userResult, siteOnline] = await Promise.all([
+            supabase.from('users').select('id, name, username, email, password, role, is_active').eq('username', username).single(),
+            getSiteOnlineStatus()
+        ]);
+        const { data: user, error } = userResult;
         if (error || !user) {
             return res.status(404).json({ message: "User Not Found!" });
         }
 
-        if (user.role !== 'admin' && user.role !== 'trainer' && await getSiteOnlineStatus() === false) {
+        if (user.role !== 'admin' && user.role !== 'trainer' && siteOnline === false) {
             return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
 
@@ -168,11 +181,12 @@ const getUserHistory = async (req, res) => {
     }
 
     try {
-        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
-        if (userError || !user) {
-            return res.status(404).json({ message: "User Not Found" });
-        }
-        const { data: meetings, error: meetingsError } = await supabase.from('meetings').select('*').eq('user_id', user.username);
+        const user = req.user;
+        const { data: meetings, error: meetingsError } = await supabase
+            .from('meetings')
+            .select('id, meeting_id, created_at')
+            .eq('user_id', user.username)
+            .order('created_at', { ascending: false });
         if (meetingsError) throw meetingsError;
 
         return res.json(meetings);
@@ -215,12 +229,7 @@ const clearUserHistory = async (req, res) => {
     }
 
     try {
-        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
-        if (userError || !user) {
-            return res.status(404).json({ message: "User Not Found" });
-        }
-
-        const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', user.username);
+        const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', req.user.username);
         if (deleteError) throw deleteError;
 
         return res.status(200).json({ message: "Meeting history cleared successfully" });
@@ -239,14 +248,9 @@ const deleteMeetingFromHistory = async (req, res) => {
     }
 
     try {
-        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
-        if (userError || !user) {
-            return res.status(404).json({ message: "User Not Found" });
-        }
-
         const { error } = await supabase.from('meetings')
             .delete()
-            .eq('user_id', user.username)
+            .eq('user_id', req.user.username)
             .or(`id.eq.${id},meeting_id.eq.${id}`);
 
         if (error) throw error;

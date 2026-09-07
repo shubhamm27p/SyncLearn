@@ -85,23 +85,23 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#0f0f12', color: '#f4f4f5' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8f9fa', color: '#101828' }}>
       {/* SyncLearn Dynamic Responsive Navigation Header */}
       <Paper
-        elevation={2}
+        elevation={0}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           px: { xs: 2, sm: 3, md: 5 },
           py: 1.5,
-          backgroundColor: '#18181b',
-          borderBottom: '1px solid #27272a',
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #eaecf0',
           borderRadius: 0,
           position: 'sticky',
           top: 0,
           zIndex: 1100,
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
         }}
       >
         {/* Brand Logo & Title */}
@@ -114,8 +114,8 @@ const DashboardLayout = () => {
               width: 40,
               height: 40,
               borderRadius: '12px',
-              backgroundColor: 'rgba(14,113,235,0.15)',
-              border: '1px solid rgba(14,113,235,0.3)',
+              backgroundColor: 'rgba(14,113,235,0.08)',
+              border: '1px solid rgba(14,113,235,0.2)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -128,9 +128,9 @@ const DashboardLayout = () => {
               variant="h6"
               sx={{
                 fontWeight: 700,
-                color: '#ffffff',
+                color: '#101828',
                 fontSize: { xs: '17px', sm: '19px' },
-                letterSpacing: '-0.3px',
+                letterSpacing: '-0.4px',
                 lineHeight: 1.2
               }}
             >
@@ -151,9 +151,9 @@ const DashboardLayout = () => {
                 startIcon={item.icon}
                 onClick={() => handleNavClick(item.path)}
                 sx={{
-                  color: item.active ? '#ffffff' : '#a1a1a6',
-                  backgroundColor: item.active ? 'rgba(14,113,235,0.2)' : 'transparent',
-                  border: item.active ? '1px solid rgba(14,113,235,0.4)' : '1px solid transparent',
+                  color: item.active ? '#0e71eb' : '#344054',
+                  backgroundColor: item.active ? 'rgba(14,113,235,0.08)' : 'transparent',
+                  border: item.active ? '1px solid rgba(14,113,235,0.2)' : '1px solid transparent',
                   borderRadius: '10px',
                   px: 2,
                   py: 0.8,
@@ -162,8 +162,8 @@ const DashboardLayout = () => {
                   textTransform: 'none',
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    backgroundColor: item.active ? 'rgba(14,113,235,0.25)' : 'rgba(255,255,255,0.06)',
-                    color: '#ffffff',
+                    backgroundColor: item.active ? 'rgba(14,113,235,0.12)' : '#f2f4f7',
+                    color: item.active ? '#0e71eb' : '#101828',
                   }
                 }}
               >
@@ -180,9 +180,9 @@ const DashboardLayout = () => {
             label={isAdmin ? 'Trainer / Admin' : 'Student'}
             size="small"
             sx={{
-              backgroundColor: isAdmin ? 'rgba(234,179,8,0.15)' : 'rgba(16,185,129,0.15)',
-              color: isAdmin ? '#eab308' : '#10b981',
-              border: `1px solid ${isAdmin ? 'rgba(234,179,8,0.3)' : 'rgba(16,185,129,0.3)'}`,
+              backgroundColor: isAdmin ? 'rgba(217,119,6,0.1)' : 'rgba(16,185,129,0.1)',
+              color: isAdmin ? '#d97706' : '#059669',
+              border: `1px solid ${isAdmin ? 'rgba(217,119,6,0.25)' : 'rgba(16,185,129,0.25)'}`,
               fontWeight: 700,
               fontSize: '11px',
               display: { xs: 'none', sm: 'inline-flex' }
@@ -194,9 +194,9 @@ const DashboardLayout = () => {
             <IconButton
               onClick={handleDrawerToggle}
               sx={{
-                color: '#ffffff',
-                backgroundColor: 'rgba(255,255,255,0.06)',
-                border: '1px solid #27272a',
+                color: '#101828',
+                backgroundColor: '#ffffff',
+                border: '1px solid #eaecf0',
                 borderRadius: '10px',
                 p: 1,
               }}
@@ -215,18 +215,18 @@ const DashboardLayout = () => {
         PaperProps={{
           sx: {
             width: 280,
-            backgroundColor: '#18181b',
-            color: '#ffffff',
-            borderLeft: '1px solid #27272a',
+            backgroundColor: '#ffffff',
+            color: '#101828',
+            borderLeft: '1px solid #eaecf0',
             p: 2,
           }
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #27272a' }}>
-          <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #eaecf0' }}>
+          <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 700, color: '#101828' }}>
             Navigation Menu
           </Typography>
-          <IconButton onClick={handleDrawerToggle} sx={{ color: '#a1a1a6' }}>
+          <IconButton onClick={handleDrawerToggle} sx={{ color: '#667085' }}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -239,19 +239,19 @@ const DashboardLayout = () => {
                 selected={item.active}
                 sx={{
                   borderRadius: '10px',
-                  backgroundColor: item.active ? 'rgba(14,113,235,0.2)' : 'transparent',
-                  color: item.active ? '#0e71eb' : '#a1a1a6',
+                  backgroundColor: item.active ? 'rgba(14,113,235,0.08)' : 'transparent',
+                  color: item.active ? '#0e71eb' : '#344054',
                   '&.Mui-selected': {
-                    backgroundColor: 'rgba(14,113,235,0.2)',
+                    backgroundColor: 'rgba(14,113,235,0.08)',
                     color: '#0e71eb',
                   },
                   '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,0.06)',
-                    color: '#ffffff',
+                    backgroundColor: '#f2f4f7',
+                    color: '#101828',
                   }
                 }}
               >
-                <ListItemIcon sx={{ color: item.active ? '#0e71eb' : '#a1a1a6', minWidth: 36 }}>
+                <ListItemIcon sx={{ color: item.active ? '#0e71eb' : '#667085', minWidth: 36 }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '14px', fontWeight: item.active ? 700 : 500 }} />
@@ -260,7 +260,7 @@ const DashboardLayout = () => {
           ))}
         </List>
 
-        <Divider sx={{ my: 2, borderColor: '#27272a' }} />
+        <Divider sx={{ my: 2, borderColor: '#eaecf0' }} />
 
         <Box sx={{ p: 1 }}>
           <Chip
@@ -268,9 +268,9 @@ const DashboardLayout = () => {
             size="small"
             sx={{
               width: '100%',
-              backgroundColor: isAdmin ? 'rgba(234,179,8,0.15)' : 'rgba(16,185,129,0.15)',
-              color: isAdmin ? '#eab308' : '#10b981',
-              border: `1px solid ${isAdmin ? 'rgba(234,179,8,0.3)' : 'rgba(16,185,129,0.3)'}`,
+              backgroundColor: isAdmin ? 'rgba(217,119,6,0.1)' : 'rgba(16,185,129,0.1)',
+              color: isAdmin ? '#d97706' : '#059669',
+              border: `1px solid ${isAdmin ? 'rgba(217,119,6,0.25)' : 'rgba(16,185,129,0.25)'}`,
               fontWeight: 700,
               fontSize: '12px',
               py: 0.5

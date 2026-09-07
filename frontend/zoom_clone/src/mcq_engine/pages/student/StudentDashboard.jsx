@@ -160,34 +160,43 @@ const StudentDashboard = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      {/* Welcome Banner */}
       <div style={{
-        background: 'rgba(14,113,235,0.1)',
-        border: '1px solid rgba(14,113,235,0.25)',
-        borderRadius: 16, padding: '24px 28px',
+        background: 'linear-gradient(135deg, rgba(14,113,235,0.08) 0%, rgba(14,113,235,0.02) 100%)',
+        border: '1px solid rgba(14,113,235,0.2)',
+        borderRadius: 16,
+        padding: '24px 28px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
       }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#101828', margin: 0 }}>
           {greeting()}, <span style={{ color: '#0e71eb' }}>{user?.name?.split(' ')[0]}</span> 👋
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4, margin: 0 }}>
-          Here are your available tests
+        <p style={{ fontSize: 14, color: '#475467', marginTop: 4, margin: 0, fontWeight: 500 }}>
+          Here are your available assessments and test progress
         </p>
       </div>
 
+      {/* Stats Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
         {stats.map((s, i) => {
           const Icon = s.icon;
           return (
             <div key={i} style={{
-              background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-              borderRadius: 16, padding: '18px 20px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+              background: '#ffffff',
+              border: '1px solid #eaecf0',
+              borderRadius: 16,
+              padding: '18px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
             }}>
               <div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 500, margin: 0 }}>{s.label}</p>
-                <p style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginTop: 6, margin: 0 }}>{s.value}</p>
+                <p style={{ fontSize: 11, color: '#667085', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600, margin: 0 }}>{s.label}</p>
+                <p style={{ fontSize: 28, fontWeight: 800, color: '#101828', marginTop: 6, margin: 0 }}>{s.value}</p>
               </div>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${s.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon size={18} style={{ color: s.color }} />
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${s.color}12`, border: `1px solid ${s.color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon size={20} style={{ color: s.color }} />
               </div>
             </div>
           );
@@ -196,16 +205,17 @@ const StudentDashboard = () => {
 
       {/* Trainers You Follow Section */}
       <div style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-color)',
+        background: '#ffffff',
+        border: '1px solid #eaecf0',
         borderRadius: 16,
         padding: '20px 24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <HiOutlineSparkles color="#eab308" size={18} /> Follow Trainers & Instructors
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#101828', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HiOutlineSparkles color="#d97706" size={18} /> Follow Trainers & Instructors
           </h2>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: 12, color: '#667085', fontWeight: 500 }}>
             Follow trainers to get instant access to all published assessments
           </span>
         </div>
@@ -218,8 +228,8 @@ const StudentDashboard = () => {
               <div
                 key={tr}
                 style={{
-                  background: isFollowing ? 'rgba(14,113,235,0.08)' : 'var(--bg-hover)',
-                  border: isFollowing ? '1px solid rgba(14,113,235,0.3)' : '1px solid var(--border-color)',
+                  background: isFollowing ? 'rgba(14,113,235,0.06)' : '#f9fafb',
+                  border: isFollowing ? '1px solid rgba(14,113,235,0.25)' : '1px solid #eaecf0',
                   borderRadius: 12,
                   padding: '12px 16px',
                   minWidth: 200,
@@ -232,28 +242,28 @@ const StudentDashboard = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 36, height: 36, borderRadius: '50%',
-                    background: isFollowing ? '#0e71eb' : '#333338',
+                    background: isFollowing ? '#0e71eb' : '#64748b',
                     color: '#fff', fontSize: 14, fontWeight: 700,
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
                     {tr.charAt(0)}
                   </div>
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{tr}</p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{trainerTestCount} Test(s)</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#101828', margin: 0 }}>{tr}</p>
+                    <p style={{ fontSize: 11, color: '#667085', margin: '2px 0 0 0' }}>{trainerTestCount} Test(s)</p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => toggleFollowTrainer(tr)}
                   style={{
-                    background: isFollowing ? '#10b981' : 'rgba(14,113,235,0.15)',
+                    background: isFollowing ? '#059669' : 'rgba(14,113,235,0.08)',
                     color: isFollowing ? '#fff' : '#0e71eb',
-                    border: isFollowing ? 'none' : '1px solid rgba(14,113,235,0.3)',
+                    border: isFollowing ? 'none' : '1px solid rgba(14,113,235,0.25)',
                     borderRadius: 8,
-                    padding: '6px 10px',
+                    padding: '6px 12px',
                     fontSize: 11,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -269,9 +279,10 @@ const StudentDashboard = () => {
         </div>
       </div>
 
+      {/* Available Tests Section */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Available Tests</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#101828', margin: 0 }}>Available Tests</h2>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -282,9 +293,9 @@ const StudentDashboard = () => {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: activeFilter === 'all' ? '1px solid #0e71eb' : '1px solid var(--border-color)',
-                background: activeFilter === 'all' ? '#0e71eb' : 'var(--bg-surface)',
-                color: activeFilter === 'all' ? '#ffffff' : 'var(--text-muted)',
+                border: activeFilter === 'all' ? '1px solid #0e71eb' : '1px solid #eaecf0',
+                background: activeFilter === 'all' ? '#0e71eb' : '#ffffff',
+                color: activeFilter === 'all' ? '#ffffff' : '#344054',
               }}
             >
               All Tests ({availableTests.length})
@@ -297,9 +308,9 @@ const StudentDashboard = () => {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: activeFilter === 'followed' ? '1px solid #eab308' : '1px solid var(--border-color)',
-                background: activeFilter === 'followed' ? 'rgba(234,179,8,0.15)' : 'var(--bg-surface)',
-                color: activeFilter === 'followed' ? '#eab308' : 'var(--text-muted)',
+                border: activeFilter === 'followed' ? '1px solid #d97706' : '1px solid #eaecf0',
+                background: activeFilter === 'followed' ? 'rgba(217,119,6,0.1)' : '#ffffff',
+                color: activeFilter === 'followed' ? '#d97706' : '#344054',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
@@ -312,14 +323,18 @@ const StudentDashboard = () => {
 
         {liveTests.length === 0 && upcomingTests.length === 0 ? (
           <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-            borderRadius: 16, padding: '48px 24px', textAlign: 'center',
+            background: '#ffffff',
+            border: '1px solid #eaecf0',
+            borderRadius: 16,
+            padding: '48px 24px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
           }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📝</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
+            <p style={{ color: '#101828', fontSize: 15, fontWeight: 600, margin: 0 }}>
               {activeFilter === 'followed' ? 'No tests from followed trainers right now' : 'No tests available right now'}
             </p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4, margin: 0 }}>
+            <p style={{ color: '#667085', fontSize: 13, marginTop: 4, margin: 0 }}>
               {activeFilter === 'followed' ? 'Follow more trainers above to see their newly created assessments' : 'Check back later for upcoming tests'}
             </p>
           </div>
@@ -332,18 +347,23 @@ const StudentDashboard = () => {
 
               return (
                 <div key={test._id || test.id} style={{
-                  background: 'var(--bg-surface)',
-                  border: isFollowed ? '1px solid rgba(234,179,8,0.3)' : '1px solid var(--border-color)',
-                  borderRadius: 16, padding: 24,
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+                  background: '#ffffff',
+                  border: isFollowed ? '1px solid rgba(217,119,6,0.35)' : '1px solid #eaecf0',
+                  borderRadius: 16,
+                  padding: 24,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
                 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
-                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
-                        background: isLive ? 'rgba(239,68,68,0.15)' : 'rgba(14,113,235,0.15)',
-                        color: isLive ? '#ef4444' : '#0e71eb',
+                        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                        background: isLive ? 'rgba(220,38,38,0.08)' : 'rgba(14,113,235,0.08)',
+                        color: isLive ? '#dc2626' : '#0e71eb',
+                        border: `1px solid ${isLive ? 'rgba(220,38,38,0.2)' : 'rgba(14,113,235,0.2)'}`,
                         borderRadius: 20, padding: '4px 12px',
                       }}>
                         {isLive ? '🔴 LIVE' : 'UPCOMING'}
@@ -352,8 +372,9 @@ const StudentDashboard = () => {
                       {isFollowed && (
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 10, fontWeight: 700,
-                          background: 'rgba(234,179,8,0.15)', color: '#eab308',
+                          fontSize: 11, fontWeight: 700,
+                          background: 'rgba(217,119,6,0.1)', color: '#d97706',
+                          border: '1px solid rgba(217,119,6,0.25)',
                           borderRadius: 20, padding: '4px 10px',
                         }}>
                           <HiOutlineStar size={12} /> Followed Trainer
@@ -362,21 +383,21 @@ const StudentDashboard = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-                      <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{test.title}</h3>
+                      <h3 style={{ fontSize: 17, fontWeight: 700, color: '#101828', margin: 0 }}>{test.title}</h3>
                       {test.testType === 'coding' && (
-                        <span style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
+                        <span style={{ background: 'rgba(147,51,234,0.1)', color: '#7e22ce', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '700' }}>
                           💻 Coding
                         </span>
                       )}
                       {test.testType === 'combined' && (
-                        <span style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '600' }}>
+                        <span style={{ background: 'rgba(2,132,199,0.1)', color: '#0284c7', borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: '700' }}>
                           🎯 MCQ + Coding
                         </span>
                       )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 10px 0' }}>
-                      <span style={{ fontSize: 12, color: '#0e71eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 13, color: '#0e71eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                         👨‍🏫 {trainerName}
                       </span>
                       <button
@@ -384,26 +405,26 @@ const StudentDashboard = () => {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: isFollowed ? '#10b981' : '#a1a1a6',
+                          color: isFollowed ? '#059669' : '#667085',
                           fontSize: 11,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4,
                         }}
                       >
-                        {isFollowed ? <HiOutlineCheckCircle size={13} /> : <HiOutlineUserPlus size={13} />}
+                        {isFollowed ? <HiOutlineCheckCircle size={14} /> : <HiOutlineUserPlus size={14} />}
                         {isFollowed ? 'Following' : '+ Follow'}
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#667085', fontWeight: 500, marginBottom: 6 }}>
                       <span>{test.totalQuestions || test.questionCount || 0} Qs</span>
                       <span>{test.duration} mins</span>
                       <span>{test.maxAttempts || 1} attempt(s)</span>
                     </div>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+                    <p style={{ fontSize: 12, color: '#667085', marginBottom: 20 }}>
                       {formatDate(test.startTime)} – {formatDate(test.endTime)}
                     </p>
                   </div>
@@ -414,8 +435,9 @@ const StudentDashboard = () => {
                         {test.hasAttempted ? (
                           <div style={{
                             display: 'inline-flex', alignItems: 'center', gap: 6,
-                            background: 'rgba(16,185,129,0.15)', color: '#10b981',
-                            borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 600,
+                            background: 'rgba(16,185,129,0.1)', color: '#059669',
+                            border: '1px solid rgba(16,185,129,0.25)',
+                            borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700,
                           }}>
                             <HiOutlineCheckBadge size={16} /> Attempted · {test.bestPercentage}%
                           </div>
@@ -426,9 +448,10 @@ const StudentDashboard = () => {
                         ) : (
                           <div style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            color: 'var(--text-muted)', fontSize: 13,
-                            background: 'var(--bg-hover)', borderRadius: 10,
+                            color: '#667085', fontSize: 13, fontWeight: 500,
+                            background: '#f9fafb', borderRadius: 10,
                             padding: '10px 16px', justifyContent: 'center',
+                            border: '1px solid #eaecf0',
                           }}>
                             <HiOutlineClock size={16} /> Starts in {getTimeUntil(test.startTime)}
                           </div>
@@ -476,34 +499,39 @@ const StudentDashboard = () => {
         )}
       </div>
 
+      {/* Previous Results Section */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Previous Results</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#101828', margin: 0 }}>Previous Results</h2>
           {results.length > 0 && (
-            <Link to="/student/results" style={{ fontSize: 12, color: '#0e71eb', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-              View all <HiOutlineArrowRight size={12} />
+            <Link to="/student/results" style={{ fontSize: 13, color: '#0e71eb', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+              View all <HiOutlineArrowRight size={14} />
             </Link>
           )}
         </div>
 
         {results.length === 0 ? (
           <div style={{
-            background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-            borderRadius: 16, padding: '48px 24px', textAlign: 'center',
+            background: '#ffffff',
+            border: '1px solid #eaecf0',
+            borderRadius: 16,
+            padding: '48px 24px',
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
           }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>You haven't attempted any tests yet</p>
+            <p style={{ color: '#101828', fontSize: 15, fontWeight: 600, margin: 0 }}>You haven't attempted any tests yet</p>
           </div>
         ) : (
-          <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 16, overflow: 'hidden' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #eaecf0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Test</th>
-                    <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Score</th>
-                    <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>%</th>
-                    <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Date</th>
+                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #eaecf0' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: '#475467', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Test</th>
+                    <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: '#475467', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Score</th>
+                    <th style={{ textAlign: 'center', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: '#475467', textTransform: 'uppercase', letterSpacing: '0.5px' }}>%</th>
+                    <th style={{ textAlign: 'left', padding: '12px 20px', fontSize: 11, fontWeight: 600, color: '#475467', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</th>
                     <th style={{ width: 40 }}></th>
                   </tr>
                 </thead>
@@ -512,24 +540,25 @@ const StudentDashboard = () => {
                     const pass = (r.percentage || 0) >= 40;
                     return (
                       <tr key={r._id} onClick={() => navigate(`/student/results/${r._id}`)}
-                        style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }}
+                        style={{ borderBottom: '1px solid #eaecf0', cursor: 'pointer' }}
                       >
-                        <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.testId?.title || 'Test'}</td>
-                        <td style={{ padding: '12px 20px', textAlign: 'center' }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: pass ? '#10b981' : '#ef4444' }}>
+                        <td style={{ padding: '14px 20px', fontSize: 13, fontWeight: 600, color: '#101828' }}>{r.testId?.title || 'Test'}</td>
+                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: pass ? '#059669' : '#dc2626' }}>
                             {r.score}/{r.totalMarks}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 20px', textAlign: 'center' }}>
+                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                           <span style={{
                             fontSize: 11, fontWeight: 700, borderRadius: 20,
                             padding: '3px 10px',
-                            background: pass ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-                            color: pass ? '#10b981' : '#ef4444',
+                            background: pass ? 'rgba(16,185,129,0.1)' : 'rgba(220,38,38,0.1)',
+                            color: pass ? '#059669' : '#dc2626',
+                            border: `1px solid ${pass ? 'rgba(16,185,129,0.25)' : 'rgba(220,38,38,0.25)'}`,
                           }}>{r.percentage}%</span>
                         </td>
-                        <td style={{ padding: '12px 20px', fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(r.submittedAt)}</td>
-                        <td style={{ padding: '12px 20px' }}><HiOutlineArrowRight size={14} style={{ color: 'var(--text-muted)' }} /></td>
+                        <td style={{ padding: '14px 20px', fontSize: 12, color: '#667085' }}>{formatDate(r.submittedAt)}</td>
+                        <td style={{ padding: '14px 20px' }}><HiOutlineArrowRight size={14} style={{ color: '#667085' }} /></td>
                       </tr>
                     );
                   })}
