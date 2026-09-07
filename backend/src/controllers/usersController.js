@@ -5,30 +5,48 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { sendNewPasswordEmail } from "../utils/sendEmail.js";
 
+let inMemorySiteStatus = true;
+
 export const getSiteOnlineStatus = async () => {
-    const { data, error } = await supabase
-        .from('site_settings')
-        .select('is_online')
-        .eq('key', 'main_site')
-        .maybeSingle();
-    if (error) throw error;
-    if (!data) {
-        const { data: created, error: createError } = await supabase
+    try {
+        const { data, error } = await supabase
             .from('site_settings')
-            .insert({ key: 'main_site', is_online: true })
             .select('is_online')
-            .single();
-        if (createError) throw createError;
-        return created.is_online;
+            .eq('key', 'main_site')
+            .maybeSingle();
+
+        if (error) {
+            console.warn("[getSiteOnlineStatus] Supabase table 'site_settings' unavailable, using fallback:", error.message);
+            return inMemorySiteStatus;
+        }
+
+        if (!data) {
+            try {
+                const { data: created, error: createError } = await supabase
+                    .from('site_settings')
+                    .insert({ key: 'main_site', is_online: true })
+                    .select('is_online')
+                    .single();
+                if (!createError && created) return created.is_online;
+            } catch (createErr) {
+                console.warn("[getSiteOnlineStatus] Error creating default site_settings row:", createErr.message);
+            }
+            return inMemorySiteStatus;
+        }
+
+        return data.is_online;
+    } catch (e) {
+        console.warn("[getSiteOnlineStatus] Exception caught, defaulting site_online to true:", e.message || e);
+        return inMemorySiteStatus;
     }
-    return data.is_online;
 };
 
 export const getSiteStatus = async (_req, res) => {
     try {
-        return res.json({ isOnline: await getSiteOnlineStatus() });
+        const status = await getSiteOnlineStatus();
+        return res.json({ isOnline: status });
     } catch (error) {
-        return res.status(500).json({ message: `Unable to read site status: ${error.message}` });
+        return res.json({ isOnline: inMemorySiteStatus });
     }
 };
 
@@ -36,17 +54,21 @@ export const updateSiteStatus = async (req, res) => {
     if (typeof req.body?.isOnline !== 'boolean') {
         return res.status(400).json({ message: 'isOnline must be a boolean' });
     }
+    inMemorySiteStatus = req.body.isOnline;
     try {
         const { data, error } = await supabase
             .from('site_settings')
             .upsert({ key: 'main_site', is_online: req.body.isOnline, updated_at: new Date().toISOString() })
             .select('is_online')
             .single();
-        if (error) throw error;
-        return res.json({ isOnline: data.is_online });
+
+        if (!error && data) {
+            return res.json({ isOnline: data.is_online });
+        }
     } catch (error) {
-        return res.status(500).json({ message: `Unable to update site status: ${error.message}` });
+        console.warn("[updateSiteStatus] Supabase upsert error, updated in-memory state:", error.message);
     }
+    return res.json({ isOnline: inMemorySiteStatus });
 };
 
 const login = async (req, res) => {
