@@ -23,6 +23,7 @@ import GroupIcon from "@mui/icons-material/Group";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
@@ -279,6 +280,39 @@ export default function AdminDashboard() {
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Website Status ON/OFF Toggle */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                px: 2,
+                py: 0.7,
+                borderRadius: "10px",
+                bgcolor: isOnline ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                border: `1px solid ${isOnline ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                <PowerSettingsNewIcon sx={{ fontSize: 18, color: isOnline ? "#10b981" : "#ef4444" }} />
+                <Typography sx={{ fontSize: "12px", fontWeight: 700, color: isOnline ? "#10b981" : "#ef4444" }}>
+                  Website {isOnline ? "ONLINE" : "OFFLINE"}
+                </Typography>
+              </Box>
+              <Tooltip title={isOnline ? "Click to turn website OFF" : "Click to turn website ON"}>
+                <Switch
+                  checked={isOnline}
+                  onChange={handleSiteStatusToggle}
+                  disabled={statusLoading}
+                  size="small"
+                  sx={{
+                    "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
+                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+
             <Chip
               icon={<AdminPanelSettingsIcon sx={{ fontSize: "16px !important" }} />}
               label="Administrator"
