@@ -513,7 +513,8 @@ export default function VideoMeetComponent() {
 
         socketRef.current.on("connect_error", (error) => {
             console.error("Socket connection failed:", error.message);
-            if (/login|inactive|invalid|only students/i.test(error.message || "")) {
+            const authError = ['AUTH_REQUIRED', 'AUTH_INVALID', 'AUTH_ROLE_FORBIDDEN'].includes(error.data?.code);
+            if (authError) {
                 localStorage.removeItem("token");
                 localStorage.removeItem("currentUser");
                 localStorage.removeItem("userRole");

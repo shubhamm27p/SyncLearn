@@ -98,7 +98,9 @@ export const connectToSocket = (server) => {
     io.use(async (socket, next) => {
         const token = socket.handshake.auth?.token || socket.handshake.headers.authorization?.replace(/^Bearer\s+/i, '');
         if (!token) {
-            return next(new Error('Login or sign up before joining a meeting'));
+            const error = new Error('Login or sign up before joining a meeting');
+            error.data = { code: 'AUTH_REQUIRED' };
+            return next(error);
         }
 
         socket.authUser = null;
@@ -111,18 +113,24 @@ export const connectToSocket = (server) => {
                 .single();
 
             if (error || !user || !user.is_active) {
-                return next(new Error('Your account is invalid or inactive. Please log in again.'));
+                const authError = new Error('Your account is invalid or inactive. Please log in again.');
+                authError.data = { code: 'AUTH_INVALID' };
+                return next(authError);
             }
 
             if (!['student', 'trainer', 'admin'].includes(user.role)) {
-                return next(new Error('Only students, trainers, and administrators can join meetings'));
+                const roleError = new Error('Only students, trainers, and administrators can join meetings');
+                roleError.data = { code: 'AUTH_ROLE_FORBIDDEN' };
+                return next(roleError);
             }
 
             socket.authUser = user;
             return next();
         } catch (error) {
             console.error('Socket authentication error:', error.message);
-            return next(new Error('Socket authentication failed'));
+            const authError = new Error('Socket authentication failed');
+            authError.data = { code: 'AUTH_UNAVAILABLE' };
+            return next(authError);
         }
     });
 

@@ -87,8 +87,14 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    fetchUsers();
-    getSiteStatusApi().then((data) => setIsOnline(data.isOnline)).catch(() => toast.error("Failed to load website status")).finally(() => setStatusLoading(false));
+    const authed = sessionStorage.getItem("admin_authenticated");
+    if (authed === "true") {
+      fetchUsers();
+      getSiteStatusApi()
+        .then((data) => setIsOnline(data?.isOnline ?? true))
+        .catch((err) => console.warn("Could not fetch site status:", err))
+        .finally(() => setStatusLoading(false));
+    }
   }, []);
 
   const handleSiteStatusToggle = async () => {
