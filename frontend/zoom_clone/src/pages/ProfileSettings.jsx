@@ -22,7 +22,9 @@ import {
   Alert,
   LinearProgress,
   Divider,
-  CircularProgress
+  CircularProgress,
+  IconButton,
+  InputAdornment
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import SecurityIcon from "@mui/icons-material/Security";
@@ -34,6 +36,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
 
@@ -112,6 +116,11 @@ export default function ProfileSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailVerified] = useState(true);
+
+  // Password Visibility States
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // System Preferences State
   const [notifySubmissions, setNotifySubmissions] = useState(true);
@@ -546,26 +555,44 @@ export default function ProfileSettings() {
                     <Typography component="label" sx={labelSx}>Current Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showCurrentPassword ? "text" : "password"}
                       fullWidth
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.currentPassword}
                       helperText={passwordErrors.currentPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
+                              {showCurrentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Typography component="label" sx={labelSx}>New Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       fullWidth
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.newPassword}
                       helperText={passwordErrors.newPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
+                              {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                     {newPassword && (
                       <Box sx={{ mt: 1 }}>
@@ -587,13 +614,22 @@ export default function ProfileSettings() {
                     <Typography component="label" sx={labelSx}>Confirm New Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       fullWidth
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.confirmPassword}
                       helperText={passwordErrors.confirmPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                              {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                   </Grid>
                 </Grid>

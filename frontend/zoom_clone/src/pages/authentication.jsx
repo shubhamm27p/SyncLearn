@@ -29,7 +29,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
-import ContactSupportModal from '../components/ContactSupportModal';
+import ContactSupportModal from '../components/ContactSupportModal.jsx';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
@@ -117,7 +117,13 @@ export default function Authentication() {
   const location = useLocation();
 
   const goAfterAuthentication = () => {
-    routeTo(location.state?.from || '/home', { replace: true });
+    const params = new URLSearchParams(location.search);
+    const redirectUrl = params.get('redirect');
+    if (redirectUrl) {
+      routeTo(redirectUrl, { replace: true });
+    } else {
+      routeTo(location.state?.from || '/home', { replace: true });
+    }
   };
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);

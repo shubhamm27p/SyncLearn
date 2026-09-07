@@ -37,7 +37,6 @@ function HomeComponent() {
         try {
             const sUser = sessionStorage.getItem('user');
             const lUser = localStorage.getItem('user') || localStorage.getItem('currentUser');
-            if (user) return user;
             if (sUser && sUser !== 'undefined' && sUser !== 'null') return JSON.parse(sUser);
             if (lUser && lUser !== 'undefined' && lUser !== 'null') return JSON.parse(lUser);
             return {};
@@ -108,7 +107,7 @@ function HomeComponent() {
                                 onClick={() => navigate('/admin/tests')}
                                 sx={{ color: "#eab308", fontWeight: 600, fontSize: "14px", textTransform: "none" }}
                             >
-                                Admin Panel
+                                {activeUser?.role === 'trainer' ? "Trainer Portal" : "Admin Panel"}
                             </Button>
                         ) : (
                             <Button 
@@ -226,7 +225,7 @@ function HomeComponent() {
                         <ListItem disablePadding sx={{ mb: 1 }}>
                             <ListItemButton onClick={() => { setMobileOpen(false); navigate('/admin/tests'); }} sx={{ borderRadius: "8px" }}>
                                 <ListItemIcon><AdminPanelSettingsIcon sx={{ color: "#eab308" }} /></ListItemIcon>
-                                <ListItemText primary="Admin Panel" primaryTypographyProps={{ fontWeight: 600 }} />
+                                <ListItemText primary={activeUser?.role === 'trainer' ? "Trainer Portal" : "Admin Panel"} primaryTypographyProps={{ fontWeight: 600 }} />
                             </ListItemButton>
                         </ListItem>
                     ) : (
@@ -309,7 +308,7 @@ function HomeComponent() {
                                 boxShadow: "0 4px 12px rgba(14, 113, 235, 0.2)"
                             }}
                         >
-                            {isAdmin ? "Manage Tests" : "Student Portal"}
+                            {isAdmin ? (activeUser?.role === 'trainer' ? "Trainer Portal" : "Manage Tests") : "Student Portal"}
                         </Button>
 
                         <Button 
