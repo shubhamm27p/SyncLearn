@@ -28,18 +28,6 @@ const DashboardLayout = () => {
   const isAdmin = sessionStorage.getItem('admin_authenticated') === 'true' || activeUser.role === 'admin' || activeUser.role === 'trainer';
 
   const navItems = [
-    {
-      label: 'Student Portal',
-      path: '/student/dashboard',
-      icon: <SchoolIcon />,
-      active: location.pathname === '/student/dashboard'
-    },
-    {
-      label: 'Test Hub',
-      path: '/tests',
-      icon: <QuizIcon />,
-      active: location.pathname === '/tests'
-    },
     ...(isAdmin ? [
       {
         label: 'Manage Tests',
@@ -54,6 +42,12 @@ const DashboardLayout = () => {
         active: location.pathname === '/admin/results'
       }
     ] : [
+      {
+        label: 'Student Portal',
+        path: '/student/dashboard',
+        icon: <SchoolIcon />,
+        active: location.pathname === '/student/dashboard'
+      },
       {
         label: 'My Results',
         path: '/student/results',

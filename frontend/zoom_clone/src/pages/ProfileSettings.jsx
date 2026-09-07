@@ -92,6 +92,7 @@ export default function ProfileSettings() {
   };
 
   const activeUser = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+  const isAdmin = sessionStorage.getItem("admin_authenticated") === "true" || activeUser?.role === "admin" || activeUser?.role === "trainer" || userRole === "trainer" || userRole === "admin";
 
   // General Profile State
   const [fullName, setFullName] = useState(activeUser?.name || "");
@@ -302,18 +303,21 @@ export default function ProfileSettings() {
           </Box>
 
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
-            <Button
-              onClick={() => navigate("/student/dashboard")}
-              sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
-            >
-              Student Portal
-            </Button>
-            <Button
-              onClick={() => navigate("/tests")}
-              sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
-            >
-              Test Hub
-            </Button>
+            {isAdmin ? (
+              <Button
+                onClick={() => navigate("/admin/tests")}
+                sx={{ color: "#eab308", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+              >
+                Admin Panel
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate("/student/dashboard")}
+                sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+              >
+                Student Portal
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<HomeIcon />}

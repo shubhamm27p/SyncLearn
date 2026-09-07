@@ -20,6 +20,9 @@ export default function History() {
     const [activeRooms, setActiveRooms] = useState([]);
     const routeTo = useNavigate();
 
+    const storedUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+    const isAdmin = sessionStorage.getItem("admin_authenticated") === "true" || storedUser?.role === "admin" || storedUser?.role === "trainer";
+
     // Modal States
     const [clearDialogOpen, setClearDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState(null);
@@ -109,18 +112,21 @@ export default function History() {
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                    <Button 
-                        onClick={() => routeTo("/student/dashboard")}
-                        sx={{ color: '#344054', fontWeight: 500, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
-                    >
-                        Student Portal
-                    </Button>
-                    <Button 
-                        onClick={() => routeTo("/tests")}
-                        sx={{ color: '#0e71eb', fontWeight: 600, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
-                    >
-                        Test Hub
-                    </Button>
+                    {isAdmin ? (
+                        <Button 
+                            onClick={() => routeTo("/admin/tests")}
+                            sx={{ color: '#eab308', fontWeight: 600, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
+                        >
+                            Admin Panel
+                        </Button>
+                    ) : (
+                        <Button 
+                            onClick={() => routeTo("/student/dashboard")}
+                            sx={{ color: '#0e71eb', fontWeight: 600, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
+                        >
+                            Student Portal
+                        </Button>
+                    )}
                     <Button 
                         variant="outlined" 
                         startIcon={<HomeIcon />} 

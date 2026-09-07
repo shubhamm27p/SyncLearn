@@ -91,27 +91,21 @@ function HomeComponent() {
                 {/* Desktop Navigation Links */}
                 {!isMobile ? (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                        <Button 
-                            startIcon={<SchoolIcon />} 
-                            onClick={() => navigate('/student/dashboard')}
-                            sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", textTransform: "none" }}
-                        >
-                            Student Portal
-                        </Button>
-                        <Button 
-                            startIcon={<QuizIcon />} 
-                            onClick={() => navigate('/tests')}
-                            sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none" }}
-                        >
-                            Test Hub
-                        </Button>
-                        {isAdmin && (
+                        {isAdmin ? (
                             <Button 
                                 startIcon={<AdminPanelSettingsIcon />} 
                                 onClick={() => navigate('/admin/tests')}
                                 sx={{ color: "#eab308", fontWeight: 600, fontSize: "14px", textTransform: "none" }}
                             >
                                 Admin Panel
+                            </Button>
+                        ) : (
+                            <Button 
+                                startIcon={<SchoolIcon />} 
+                                onClick={() => navigate('/student/dashboard')}
+                                sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none" }}
+                            >
+                                Student Portal
                             </Button>
                         )}
                         <Button 
@@ -217,23 +211,18 @@ function HomeComponent() {
                     </IconButton>
                 </Box>
                 <List>
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                        <ListItemButton onClick={() => { setMobileOpen(false); navigate('/student/dashboard'); }} sx={{ borderRadius: "8px" }}>
-                            <ListItemIcon><SchoolIcon sx={{ color: "#0e71eb" }} /></ListItemIcon>
-                            <ListItemText primary="Student Portal" primaryTypographyProps={{ fontWeight: 600 }} />
-                        </ListItemButton>
-                    </ListItem>
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                        <ListItemButton onClick={() => { setMobileOpen(false); navigate('/tests'); }} sx={{ borderRadius: "8px" }}>
-                            <ListItemIcon><QuizIcon sx={{ color: "#0e71eb" }} /></ListItemIcon>
-                            <ListItemText primary="Test Hub" primaryTypographyProps={{ fontWeight: 600 }} />
-                        </ListItemButton>
-                    </ListItem>
-                    {isAdmin && (
+                    {isAdmin ? (
                         <ListItem disablePadding sx={{ mb: 1 }}>
                             <ListItemButton onClick={() => { setMobileOpen(false); navigate('/admin/tests'); }} sx={{ borderRadius: "8px" }}>
                                 <ListItemIcon><AdminPanelSettingsIcon sx={{ color: "#eab308" }} /></ListItemIcon>
                                 <ListItemText primary="Admin Panel" primaryTypographyProps={{ fontWeight: 600 }} />
+                            </ListItemButton>
+                        </ListItem>
+                    ) : (
+                        <ListItem disablePadding sx={{ mb: 1 }}>
+                            <ListItemButton onClick={() => { setMobileOpen(false); navigate('/student/dashboard'); }} sx={{ borderRadius: "8px" }}>
+                                <ListItemIcon><SchoolIcon sx={{ color: "#0e71eb" }} /></ListItemIcon>
+                                <ListItemText primary="Student Portal" primaryTypographyProps={{ fontWeight: 600 }} />
                             </ListItemButton>
                         </ListItem>
                     )}
