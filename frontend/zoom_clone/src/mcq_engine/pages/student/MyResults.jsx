@@ -23,7 +23,9 @@ const MyResults = () => {
         setResults(res.data.data);
       }
     } catch (err) {
-      toast.error('Failed to load results');
+      console.warn("MyResults API unavailable, loading local results:", err);
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      setResults(localSubmissions);
     } finally {
       setLoading(false);
     }

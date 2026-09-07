@@ -28,7 +28,7 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (!error.response) {
-      toast.error('Connection lost. Please check your internet.', { id: 'network-error' });
+      console.warn('API connection unavailable:', error?.message);
       return Promise.reject(error);
     }
 

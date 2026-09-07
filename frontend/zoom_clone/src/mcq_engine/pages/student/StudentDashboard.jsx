@@ -32,10 +32,17 @@ const StudentDashboard = () => {
         API.get('/student/tests'),
         API.get('/student/results'),
       ]);
-      setTests(testsRes.data.data || []);
-      setResults(resultsRes.data.data || []);
-    } catch { toast.error('Failed to load dashboard'); }
-    finally { setLoading(false); }
+      setTests(testsRes.data?.data || []);
+      setResults(resultsRes.data?.data || []);
+    } catch (err) {
+      console.warn("Dashboard API unavailable, loading local test fallback data:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      setTests(localTests);
+      setResults(localSubmissions);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const liveTests = tests.filter((t) => t.liveStatus === 'live');

@@ -28,8 +28,18 @@ const AdminDashboard = () => {
       if (res.data?.data) {
         setStats(res.data.data);
       }
-    } catch { 
-      toast.error('Failed to load dashboard stats'); 
+    } catch (err) { 
+      console.warn("Admin stats API unavailable, loading local fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      setStats({
+        totalTests: localTests.length,
+        totalStudents: 0,
+        totalSubmissions: localSubmissions.length,
+        liveTests: localTests.filter(t => t.liveStatus === 'live' || t.status === 'live').length,
+        recentTests: localTests.slice(0, 5),
+        recentSubmissions: localSubmissions.slice(0, 5)
+      });
     } finally { 
       setLoading(false); 
     }
