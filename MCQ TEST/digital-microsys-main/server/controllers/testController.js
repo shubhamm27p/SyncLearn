@@ -1,5 +1,6 @@
 const fs = require('fs');
 const Papa = require('papaparse');
+const mongoose = require('mongoose');
 const Test = require('../models/Test');
 const Question = require('../models/Question');
 const AnswerKey = require('../models/AnswerKey');
@@ -43,11 +44,15 @@ exports.createTest = async (req, res, next) => {
     const validStartTime = startTime && !isNaN(new Date(startTime).getTime()) ? new Date(startTime) : undefined;
     const validEndTime = endTime && !isNaN(new Date(endTime).getTime()) ? new Date(endTime) : undefined;
 
+    const creatorId = (req.user && req.user._id && mongoose.Types.ObjectId.isValid(req.user._id))
+      ? req.user._id
+      : new mongoose.Types.ObjectId();
+
     const test = await Test.create({
       title: title.trim(),
       description: description || '',
       subject: testSubject,
-      createdBy: req.user._id,
+      createdBy: creatorId,
       startTime: validStartTime,
       endTime: validEndTime,
       duration: Number(duration) || 60,

@@ -39,8 +39,17 @@ const UploadQuestions = () => {
       setTestType(testRes.data.data.testType);
       setExisting(qRes.data.data);
     } catch (err) {
-      toast.error('Failed to load test');
-      navigate('/admin/tests');
+      console.warn("UploadQuestions API unavailable, loading local test fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const found = localTests.find(t => t._id === id || t.id === id);
+      if (found) {
+        setTestTitle(found.title);
+        setTestType(found.testType);
+        setExisting(found.questions || []);
+      } else {
+        toast.error('Failed to load test');
+        navigate('/admin/tests');
+      }
     } finally {
       setLoading(false);
     }
