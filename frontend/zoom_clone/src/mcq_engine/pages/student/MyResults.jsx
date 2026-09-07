@@ -77,7 +77,7 @@ const MyResults = () => {
           </p>
           <button
             className="dms-btn dms-btn-primary"
-            onClick={() => navigate('/tests')}
+            onClick={() => navigate('/student/dashboard')}
           >
             Browse Available Tests →
           </button>
