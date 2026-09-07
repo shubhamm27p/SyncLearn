@@ -10,6 +10,7 @@ import { Button, TextField, Menu, MenuItem, ListItemIcon, ListItemText, Divider,
 import AddIcon from '@mui/icons-material/Add';
 import QuizIcon from '@mui/icons-material/Quiz';
 import PersonIcon from '@mui/icons-material/Person';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 
@@ -120,6 +121,17 @@ function HomeComponent() {
                                 <PersonIcon fontSize="small" />
                             </ListItemIcon>
                             <ListItemText primary="Profile & Account" primaryTypographyProps={{ fontWeight: 600, fontSize: "0.9rem", color: "#101828" }} />
+                        </MenuItem>
+                        <MenuItem 
+                            component="a"
+                            href="mailto:synclearn.pvt@gmail.com"
+                            onClick={() => setSettingsAnchorEl(null)}
+                            sx={{ py: 1.2, px: 2, borderRadius: "8px", gap: 1.5, textDecoration: "none", color: "inherit" }}
+                        >
+                            <ListItemIcon sx={{ color: "#0e71eb", minWidth: "auto !important" }}>
+                                <SupportAgentIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primary="Contact Support" primaryTypographyProps={{ fontWeight: 600, fontSize: "0.9rem", color: "#101828" }} />
                         </MenuItem>
                         <Divider sx={{ my: 0.5 }} />
                         <MenuItem 

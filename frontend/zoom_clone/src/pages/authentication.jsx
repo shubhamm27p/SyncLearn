@@ -670,6 +670,23 @@ export default function Authentication() {
           </Box>
         </Paper>
 
+        {/* Contact Support Footer */}
+        <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px', mt: 2.5, textAlign: 'center' }}>
+          Need help?{' '}
+          <Typography
+            component="a"
+            href="mailto:synclearn.pvt@gmail.com"
+            sx={{
+              color: '#0e71eb',
+              fontWeight: 600,
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+          >
+            Contact Support (synclearn.pvt@gmail.com)
+          </Typography>
+        </Typography>
+
         <Snackbar
           open={open}
           autoHideDuration={4000}
