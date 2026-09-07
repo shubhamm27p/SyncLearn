@@ -53,6 +53,7 @@ exports.createTest = async (req, res, next) => {
       description: description || '',
       subject: testSubject,
       createdBy: creatorId,
+      status: req.body.status || 'published',
       startTime: validStartTime,
       endTime: validEndTime,
       duration: Number(duration) || 60,

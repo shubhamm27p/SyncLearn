@@ -53,8 +53,9 @@ const CreateTest = () => {
       return toast.error('End time must be after start time');
     }
 
-    setLoading(true);
-    let newTest = null;
+    const activeUser = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
+    const trainerName = activeUser.name || activeUser.username || 'SyncLearn Trainer';
+
     const payload = {
       title: form.title.trim(),
       description: form.description ? form.description.trim() : '',
@@ -67,6 +68,9 @@ const CreateTest = () => {
       startTime: formattedStartTime || undefined,
       endTime: formattedEndTime || undefined,
       testType: testType,
+      status: 'published',
+      trainerName: trainerName,
+      createdBy: activeUser.id || activeUser._id || 'trainer_admin',
     };
 
     try {
@@ -80,7 +84,6 @@ const CreateTest = () => {
       newTest = {
         _id: `test_local_${Date.now()}`,
         ...payload,
-        status: 'published',
         questionCount: 0,
         createdAt: new Date().toISOString()
       };

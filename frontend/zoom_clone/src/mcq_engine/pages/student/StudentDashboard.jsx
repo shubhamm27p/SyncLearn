@@ -14,6 +14,11 @@ import {
   HiOutlineCheckBadge,
   HiOutlineArrowRight,
   HiOutlineCodeBracketSquare,
+  HiOutlineStar,
+  HiOutlineUserPlus,
+  HiOutlineCheckCircle,
+  HiOutlineSparkles,
+  HiOutlineAcademicCap,
 } from 'react-icons/hi2';
 
 const StudentDashboard = () => {
@@ -23,6 +28,12 @@ const StudentDashboard = () => {
   const [tests, setTests] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('all');
+
+  const [followedTrainers, setFollowedTrainers] = useState(() => {
+    const saved = localStorage.getItem('viora_followed_trainers');
+    return saved ? JSON.parse(saved) : ['SyncLearn Trainer'];
+  });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -45,8 +56,54 @@ const StudentDashboard = () => {
     }
   };
 
-  const liveTests = tests.filter((t) => t.liveStatus === 'live');
-  const upcomingTests = tests.filter((t) => t.liveStatus === 'upcoming');
+  const toggleFollowTrainer = (trainerName) => {
+    let updated;
+    if (followedTrainers.includes(trainerName)) {
+      updated = followedTrainers.filter(t => t !== trainerName);
+      toast.success(`Unfollowed Trainer ${trainerName}`);
+    } else {
+      updated = [...followedTrainers, trainerName];
+      toast.success(`Now following Trainer ${trainerName}!`);
+    }
+    setFollowedTrainers(updated);
+    localStorage.setItem('viora_followed_trainers', JSON.stringify(updated));
+  };
+
+  const getComputedLiveStatus = (t) => {
+    if (t.liveStatus) return t.liveStatus;
+    if (t.status === 'draft') return 'draft';
+    const now = new Date();
+    const start = t.startTime ? new Date(t.startTime) : null;
+    const end = t.endTime ? new Date(t.endTime) : null;
+    if (start && now < start) return 'upcoming';
+    if (end && now > end) return 'ended';
+    return 'live';
+  };
+
+  const processedTests = tests.map((t) => {
+    const status = getComputedLiveStatus(t);
+    const trainer = t.trainerName || t.createdBy?.name || t.createdBy?.username || 'SyncLearn Trainer';
+    return {
+      ...t,
+      computedLiveStatus: status,
+      trainerName: trainer,
+      isFollowed: followedTrainers.includes(trainer),
+    };
+  });
+
+  const availableTests = processedTests.filter((t) => t.computedLiveStatus === 'live' || t.computedLiveStatus === 'upcoming');
+
+  const filteredTests = activeFilter === 'followed'
+    ? availableTests.filter((t) => t.isFollowed)
+    : availableTests;
+
+  const liveTests = filteredTests.filter((t) => t.computedLiveStatus === 'live');
+  const upcomingTests = filteredTests.filter((t) => t.computedLiveStatus === 'upcoming');
+
+  const uniqueTrainers = Array.from(new Set([
+    'SyncLearn Trainer',
+    ...tests.map(t => t.trainerName || t.createdBy?.name || t.createdBy?.username || 'SyncLearn Trainer')
+  ])).filter(Boolean);
   const avgScore = results.length > 0 ? Math.round(results.reduce((s, r) => s + (r.percentage || 0), 0) / results.length) : 0;
   const bestScore = results.length > 0 ? Math.max(...results.map((r) => r.percentage || 0)) : 0;
 
@@ -137,8 +194,121 @@ const StudentDashboard = () => {
         })}
       </div>
 
+      {/* Trainers You Follow Section */}
+      <div style={{
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 16,
+        padding: '20px 24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <HiOutlineSparkles color="#eab308" size={18} /> Follow Trainers & Instructors
+          </h2>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            Follow trainers to get instant access to all published assessments
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4 }}>
+          {uniqueTrainers.map((tr) => {
+            const isFollowing = followedTrainers.includes(tr);
+            const trainerTestCount = tests.filter(t => (t.trainerName || t.createdBy?.name || t.createdBy?.username || 'SyncLearn Trainer') === tr).length;
+            return (
+              <div
+                key={tr}
+                style={{
+                  background: isFollowing ? 'rgba(14,113,235,0.08)' : 'var(--bg-hover)',
+                  border: isFollowing ? '1px solid rgba(14,113,235,0.3)' : '1px solid var(--border-color)',
+                  borderRadius: 12,
+                  padding: '12px 16px',
+                  minWidth: 200,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    background: isFollowing ? '#0e71eb' : '#333338',
+                    color: '#fff', fontSize: 14, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {tr.charAt(0)}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{tr}</p>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{trainerTestCount} Test(s)</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleFollowTrainer(tr)}
+                  style={{
+                    background: isFollowing ? '#10b981' : 'rgba(14,113,235,0.15)',
+                    color: isFollowing ? '#fff' : '#0e71eb',
+                    border: isFollowing ? 'none' : '1px solid rgba(14,113,235,0.3)',
+                    borderRadius: 8,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  {isFollowing ? <HiOutlineCheckCircle size={14} /> : <HiOutlineUserPlus size={14} />}
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div>
-        <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 16 }}>Available Tests</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Available Tests</h2>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setActiveFilter('all')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: activeFilter === 'all' ? '1px solid #0e71eb' : '1px solid var(--border-color)',
+                background: activeFilter === 'all' ? '#0e71eb' : 'var(--bg-surface)',
+                color: activeFilter === 'all' ? '#ffffff' : 'var(--text-muted)',
+              }}
+            >
+              All Tests ({availableTests.length})
+            </button>
+            <button
+              onClick={() => setActiveFilter('followed')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: activeFilter === 'followed' ? '1px solid #eab308' : '1px solid var(--border-color)',
+                background: activeFilter === 'followed' ? 'rgba(234,179,8,0.15)' : 'var(--bg-surface)',
+                color: activeFilter === 'followed' ? '#eab308' : 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <HiOutlineStar size={14} /> Followed Trainers ({availableTests.filter(t => t.isFollowed).length})
+            </button>
+          </div>
+        </div>
 
         {liveTests.length === 0 && upcomingTests.length === 0 ? (
           <div style={{
@@ -146,16 +316,24 @@ const StudentDashboard = () => {
             borderRadius: 16, padding: '48px 24px', textAlign: 'center',
           }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📝</div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>No tests available right now</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4, margin: 0 }}>Check back later for upcoming tests</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14, margin: 0 }}>
+              {activeFilter === 'followed' ? 'No tests from followed trainers right now' : 'No tests available right now'}
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4, margin: 0 }}>
+              {activeFilter === 'followed' ? 'Follow more trainers above to see their newly created assessments' : 'Check back later for upcoming tests'}
+            </p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {[...liveTests, ...upcomingTests].map((test) => {
-              const isLive = test.liveStatus === 'live';
+              const isLive = test.computedLiveStatus === 'live';
+              const trainerName = test.trainerName || 'SyncLearn Trainer';
+              const isFollowed = test.isFollowed;
+
               return (
-                <div key={test._id} style={{
-                  background: 'var(--bg-surface)', border: '1px solid var(--border-color)',
+                <div key={test._id || test.id} style={{
+                  background: 'var(--bg-surface)',
+                  border: isFollowed ? '1px solid rgba(234,179,8,0.3)' : '1px solid var(--border-color)',
                   borderRadius: 16, padding: 24,
                   display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
                 }}>
@@ -170,6 +348,17 @@ const StudentDashboard = () => {
                       }}>
                         {isLive ? '🔴 LIVE' : 'UPCOMING'}
                       </span>
+
+                      {isFollowed && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          fontSize: 10, fontWeight: 700,
+                          background: 'rgba(234,179,8,0.15)', color: '#eab308',
+                          borderRadius: 20, padding: '4px 10px',
+                        }}>
+                          <HiOutlineStar size={12} /> Followed Trainer
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
@@ -186,8 +375,31 @@ const StudentDashboard = () => {
                       )}
                     </div>
 
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '8px 0 10px 0' }}>
+                      <span style={{ fontSize: 12, color: '#0e71eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        👨‍🏫 {trainerName}
+                      </span>
+                      <button
+                        onClick={() => toggleFollowTrainer(trainerName)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: isFollowed ? '#10b981' : '#a1a1a6',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {isFollowed ? <HiOutlineCheckCircle size={13} /> : <HiOutlineUserPlus size={13} />}
+                        {isFollowed ? 'Following' : '+ Follow'}
+                      </button>
+                    </div>
+
                     <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-                      <span>{test.totalQuestions || 0} Qs</span>
+                      <span>{test.totalQuestions || test.questionCount || 0} Qs</span>
                       <span>{test.duration} mins</span>
                       <span>{test.maxAttempts || 1} attempt(s)</span>
                     </div>
