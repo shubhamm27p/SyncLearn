@@ -76,13 +76,17 @@ export const connectToSocket = (server) => {
             socketUserMap[socket.id] = {
                 username: userMetaData.username || `User_${socket.id.substring(0, 4)}`,
                 role: userMetaData.role || (isFirstInRoom ? "trainer" : "student"),
-                room: path
+                room: path,
+                profilePic: userMetaData.profilePic || null,
+                mediaState: userMetaData.mediaState || { video: true, audio: true }
             };
 
             const roomUserList = connections[path].map(sId => ({
                 socketId: sId,
                 username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
-                role: socketUserMap[sId]?.role || (connections[path][0] === sId ? "trainer" : "student")
+                role: socketUserMap[sId]?.role || (connections[path][0] === sId ? "trainer" : "student"),
+                profilePic: socketUserMap[sId]?.profilePic || null,
+                mediaState: socketUserMap[sId]?.mediaState || { video: true, audio: true }
             }));
 
             // Notify everyone in the room
@@ -203,6 +207,22 @@ export const connectToSocket = (server) => {
             });
 
             console.log(`[Host Action] ${socket.id} removed participant ${targetSocketId} (${targetUsername}) from room ${userRoom}`);
+        });
+
+        // Real-time media toggle sync listener
+        socket.on("media-state-change", (mediaState) => {
+            if (socketUserMap[socket.id]) {
+                socketUserMap[socket.id].mediaState = mediaState;
+                const room = socketUserMap[socket.id].room;
+                if (room && connections[room]) {
+                    connections[room].forEach(sId => {
+                        io.to(sId).emit("media-state-updated", {
+                            socketId: socket.id,
+                            mediaState
+                        });
+                    });
+                }
+            }
         });
 
         // ==========================================

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from "react";
 import io from "socket.io-client";
 import styles from "../styles/videoComponentModule.module.css";
 import {
+  Avatar,
   Badge,
   Button,
   IconButton,
@@ -100,6 +101,7 @@ export default function VideoMeetComponent() {
     const autoLeaveTimerRef = useRef(null);
 
     const {
+        userData,
         userRole: contextRole,
         createQuizApi,
         submitQuizApi,
@@ -129,6 +131,7 @@ export default function VideoMeetComponent() {
 
     const videoRef = useRef([]);
     let [videos, setVideos] = useState([]);
+    const [peerMediaStates, setPeerMediaStates] = useState({});
 
     // MCQ Quiz States
     const [mcqModalOpen, setMcqModalOpen] = useState(false);
@@ -410,10 +413,20 @@ export default function VideoMeetComponent() {
             socketIdRef.current = socketRef.current.id;
             socketRef.current.emit("join-call", meetingCode, {
                 username: username || `User_${socketRef.current.id?.substring(0, 4)}`,
-                role: userRole
+                role: userRole,
+                profilePic: userData?.profilePic || null,
+                mediaState: { video, audio }
             });
 
             socketRef.current.on("chat-message", addMessage);
+
+            // Listener for peer media state changes (camera/mic toggles)
+            socketRef.current.on("media-state-updated", ({ socketId, mediaState }) => {
+                setPeerMediaStates(prev => ({
+                    ...prev,
+                    [socketId]: mediaState
+                }));
+            });
 
             // Host Media toggle
             socketRef.current.on("host-toggle-media", ({ type, state }) => {
@@ -422,6 +435,9 @@ export default function VideoMeetComponent() {
                         window.localStream.getAudioTracks().forEach(track => track.enabled = state);
                     }
                     setAudio(state);
+                    if (socketRef.current) {
+                        socketRef.current.emit("media-state-change", { video, audio: state });
+                    }
                     setSnackbarMsg(`Trainer/Host ${state ? "unmuted" : "muted"} your microphone.`);
                     setOpenSnackbar(true);
                 } else if (type === "video") {
@@ -429,6 +445,9 @@ export default function VideoMeetComponent() {
                         window.localStream.getVideoTracks().forEach(track => track.enabled = state);
                     }
                     setVideo(state);
+                    if (socketRef.current) {
+                        socketRef.current.emit("media-state-change", { video: state, audio });
+                    }
                     setSnackbarMsg(`Trainer/Host ${state ? "turned on" : "turned off"} your video camera.`);
                     setOpenSnackbar(true);
                 }
@@ -548,11 +567,21 @@ export default function VideoMeetComponent() {
                 }
                 if (allUsers && Array.isArray(allUsers)) {
                     setRoomParticipants(allUsers);
+                    const initialStates = {};
+                    allUsers.forEach(u => {
+                        if (u.socketId && u.mediaState) {
+                            initialStates[u.socketId] = u.mediaState;
+                        }
+                    });
+                    setPeerMediaStates(prev => ({ ...prev, ...initialStates }));
                 } else if (userMeta) {
                     setRoomParticipants((prev) => [
                         ...prev.filter(p => p.socketId !== id),
-                        { socketId: id, username: userMeta.username || `User_${id.substring(0, 4)}`, role: userMeta.role || "student" }
+                        { socketId: id, username: userMeta.username || `User_${id.substring(0, 4)}`, role: userMeta.role || "student", profilePic: userMeta.profilePic, mediaState: userMeta.mediaState }
                     ]);
+                    if (userMeta.mediaState) {
+                        setPeerMediaStates(prev => ({ ...prev, [id]: userMeta.mediaState }));
+                    }
                 }
 
                 clients.forEach((socketListId) => {
@@ -639,21 +668,29 @@ export default function VideoMeetComponent() {
     };
 
     let handleVideo = () => {
+        const nextVideo = !video;
         if (window.localStream) {
             window.localStream.getVideoTracks().forEach(track => {
-                track.enabled = !video;
+                track.enabled = nextVideo;
             });
         }
-        setVideo(!video);
+        setVideo(nextVideo);
+        if (socketRef.current) {
+            socketRef.current.emit("media-state-change", { video: nextVideo, audio });
+        }
     };
 
     let handleAudio = () => {
+        const nextAudio = !audio;
         if (window.localStream) {
             window.localStream.getAudioTracks().forEach(track => {
-                track.enabled = !audio;
+                track.enabled = nextAudio;
             });
         }
-        setAudio(!audio);
+        setAudio(nextAudio);
+        if (socketRef.current) {
+            socketRef.current.emit("media-state-change", { video, audio: nextAudio });
+        }
     };
 
     let getDisplayMediaSucess = (stream) => {
@@ -1368,17 +1405,71 @@ export default function VideoMeetComponent() {
                             overflow: "hidden",
                             border: "2px solid #0e71eb",
                             boxShadow: "0 10px 25px rgba(0, 0, 0, 0.6)",
-                            background: "#000000",
-                            transition: isDraggingSelfVideo ? "none" : "box-shadow 0.2s ease"
+                            background: "#18181b",
+                            transition: isDraggingSelfVideo ? "none" : "box-shadow 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
                         }}
                     >
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
-                        ></video>
+                        {video ? (
+                            <video
+                                ref={localVideoRef}
+                                autoPlay
+                                muted
+                                playsInline
+                                style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+                            ></video>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                                <Avatar 
+                                    src={userData?.profilePic || ""} 
+                                    sx={{ 
+                                        width: 44, 
+                                        height: 44, 
+                                        bgcolor: "#0e71eb", 
+                                        fontSize: "1.1rem", 
+                                        fontWeight: "bold",
+                                        border: "2px solid rgba(255,255,255,0.25)"
+                                    }}
+                                >
+                                    {(username || "Self")[0]?.toUpperCase()}
+                                </Avatar>
+                            </div>
+                        )}
+
+                        {/* Self Frame Status Icons */}
+                        <div style={{
+                            position: "absolute",
+                            top: "6px",
+                            right: "6px",
+                            display: "flex",
+                            gap: "4px",
+                            zIndex: 5
+                        }}>
+                            {!video && (
+                                <Tooltip title="Camera Off">
+                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <VideocamOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            )}
+                            {!audio ? (
+                                <Tooltip title="Microphone Muted">
+                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <MicOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title="Microphone Active">
+                                    <Box sx={{ bgcolor: "rgba(16, 185, 129, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <MicIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            )}
+                        </div>
+
+                        {/* Self Name Banner */}
                         <div style={{
                             position: "absolute",
                             bottom: "4px",
@@ -1390,45 +1481,131 @@ export default function VideoMeetComponent() {
                             color: "#ffffff",
                             fontSize: "0.68rem",
                             fontWeight: "bold",
-                            pointerEvents: "none"
+                            pointerEvents: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
                         }}>
-                            You ({username || "Self"})
+                            <span>You ({username || "Self"})</span>
                         </div>
                     </div>
 
                     {/* Conference View / Trainer Presentation View */}
                     <div className={`${styles.conferenceView} ${showModal ? styles.conferenceViewShifted : ''}`}>
-                        {videos.map((v) => (
-                            <div key={v.socketId} className={styles.videoWrapper}>
-                                {isTrainerOrAdmin && (
-                                    <div className={styles.hostControlsOverlay}>
-                                        <Tooltip title="Request Student to Enable Video Camera (User Permission)">
-                                            <IconButton 
-                                                size="small" 
-                                                onClick={() => handleRequestStudentCamera(v.socketId)}
-                                                style={{ color: '#38bdf8' }}
+                        {videos.map((v) => {
+                            const participant = roomParticipants.find(p => p.socketId === v.socketId);
+                            const participantName = participant?.username || `User_${v.socketId.substring(0, 4)}`;
+                            const mediaState = peerMediaStates[v.socketId] || { video: true, audio: true };
+                            const isRemoteVideoOn = mediaState.video !== false;
+
+                            return (
+                                <div key={v.socketId} className={styles.videoWrapper} style={{ position: "relative", background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                                    {isTrainerOrAdmin && (
+                                        <div className={styles.hostControlsOverlay}>
+                                            <Tooltip title="Request Student to Enable Video Camera (User Permission)">
+                                                <IconButton 
+                                                    size="small" 
+                                                    onClick={() => handleRequestStudentCamera(v.socketId)}
+                                                    style={{ color: '#38bdf8' }}
+                                                >
+                                                    <VideoCameraFrontIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </div>
+                                    )}
+
+                                    {/* Live Stream or Profile Avatar when Camera is Off */}
+                                    {isRemoteVideoOn ? (
+                                        <video
+                                            data-socket={v.socketId}
+                                            ref={ref => {
+                                                if (ref && v.stream) {
+                                                    if (ref.srcObject !== v.stream) {
+                                                        ref.srcObject = v.stream;
+                                                    }
+                                                    ref.play().catch(err => console.log("Remote video play error:", err));
+                                                }
+                                            }}
+                                            autoPlay
+                                            playsInline
+                                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                        >
+                                        </video>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                                            <Avatar 
+                                                src={participant?.profilePic || ""} 
+                                                sx={{ 
+                                                    width: 72, 
+                                                    height: 72, 
+                                                    bgcolor: "#0e71eb", 
+                                                    fontSize: "1.8rem", 
+                                                    fontWeight: "bold",
+                                                    border: "3px solid rgba(255,255,255,0.15)",
+                                                    boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+                                                }}
                                             >
-                                                <VideoCameraFrontIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
+                                                {participantName[0]?.toUpperCase()}
+                                            </Avatar>
+                                            <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                {participantName} (Camera Off)
+                                            </Typography>
+                                        </div>
+                                    )}
+
+                                    {/* Frame Corner Status Badges (Mic & Video Off Icons) */}
+                                    <div style={{
+                                        position: "absolute",
+                                        top: "10px",
+                                        right: "10px",
+                                        display: "flex",
+                                        gap: "6px",
+                                        zIndex: 5
+                                    }}>
+                                        {mediaState.video === false && (
+                                            <Tooltip title="Camera Off">
+                                                <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <VideocamOffIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
+                                        {mediaState.audio === false ? (
+                                            <Tooltip title="Microphone Muted">
+                                                <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <MicOffIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        ) : (
+                                            <Tooltip title="Microphone Active">
+                                                <Box sx={{ bgcolor: "rgba(16, 185, 129, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <MicIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
                                     </div>
-                                )}
-                                <video
-                                    data-socket={v.socketId}
-                                    ref={ref => {
-                                        if (ref && v.stream) {
-                                            if (ref.srcObject !== v.stream) {
-                                                ref.srcObject = v.stream;
-                                            }
-                                            ref.play().catch(err => console.log("Remote video play error:", err));
-                                        }
-                                    }}
-                                    autoPlay
-                                    playsInline
-                                >
-                                </video>
-                            </div>
-                        ))}
+
+                                    {/* Name Banner at Bottom Left */}
+                                    <div style={{
+                                        position: "absolute",
+                                        bottom: "8px",
+                                        left: "10px",
+                                        background: "rgba(15, 23, 42, 0.75)",
+                                        backdropFilter: "blur(6px)",
+                                        padding: "3px 10px",
+                                        borderRadius: "6px",
+                                        color: "#ffffff",
+                                        fontSize: "0.78rem",
+                                        fontWeight: 600,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "6px",
+                                        pointerEvents: "none"
+                                    }}>
+                                        <span>{participantName}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
 
                     {/* Student Live MCQ Widget (On-Screen) */}
