@@ -62,6 +62,9 @@ import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import StarIcon from '@mui/icons-material/Star';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import RemoveIcon from '@mui/icons-material/Remove';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
@@ -176,6 +179,84 @@ export default function VideoMeetComponent() {
     const [selfVideoPos, setSelfVideoPos] = useState({ x: 20, y: window.innerHeight - 200 });
     const [isDraggingSelfVideo, setIsDraggingSelfVideo] = useState(false);
     const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+    // MCQ Widget Drag, Position & Minimize States
+    const [mcqCardPos, setMcqCardPos] = useState({ x: 24, y: 80 });
+    const [isDraggingMcqCard, setIsDraggingMcqCard] = useState(false);
+    const [mcqMinimized, setMcqMinimized] = useState(false);
+    const mcqDragOffsetRef = useRef({ x: 0, y: 0 });
+
+    const handleMcqMouseDown = (e) => {
+        if (e.button !== 0) return;
+        setIsDraggingMcqCard(true);
+        mcqDragOffsetRef.current = {
+            x: e.clientX - mcqCardPos.x,
+            y: e.clientY - mcqCardPos.y
+        };
+    };
+
+    const handleMcqTouchStart = (e) => {
+        if (e.touches && e.touches[0]) {
+            setIsDraggingMcqCard(true);
+            mcqDragOffsetRef.current = {
+                x: e.touches[0].clientX - mcqCardPos.x,
+                y: e.touches[0].clientY - mcqCardPos.y
+            };
+        }
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDraggingMcqCard) return;
+            let newX = e.clientX - mcqDragOffsetRef.current.x;
+            let newY = e.clientY - mcqDragOffsetRef.current.y;
+
+            const maxRight = Math.max(10, window.innerWidth - 300);
+            const maxBottom = Math.max(10, window.innerHeight - 80);
+            newX = Math.max(10, Math.min(newX, maxRight));
+            newY = Math.max(10, Math.min(newY, maxBottom));
+
+            setMcqCardPos({ x: newX, y: newY });
+        };
+
+        const handleMouseUp = () => {
+            if (isDraggingMcqCard) {
+                setIsDraggingMcqCard(false);
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDraggingMcqCard || !e.touches || !e.touches[0]) return;
+            let newX = e.touches[0].clientX - mcqDragOffsetRef.current.x;
+            let newY = e.touches[0].clientY - mcqDragOffsetRef.current.y;
+
+            const maxRight = Math.max(10, window.innerWidth - 300);
+            const maxBottom = Math.max(10, window.innerHeight - 80);
+            newX = Math.max(10, Math.min(newX, maxRight));
+            newY = Math.max(10, Math.min(newY, maxBottom));
+
+            setMcqCardPos({ x: newX, y: newY });
+        };
+
+        const handleTouchEnd = () => {
+            if (isDraggingMcqCard) {
+                setIsDraggingMcqCard(false);
+            }
+        };
+
+        if (isDraggingMcqCard) {
+            window.addEventListener("mousemove", handleMouseMove);
+            window.addEventListener("mouseup", handleMouseUp);
+            window.addEventListener("touchmove", handleTouchMove);
+            window.addEventListener("touchend", handleTouchEnd);
+        }
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+            window.removeEventListener("touchmove", handleTouchMove);
+            window.removeEventListener("touchend", handleTouchEnd);
+        };
+    }, [isDraggingMcqCard]);
 
     const handleSelfVideoMouseDown = (e) => {
         setIsDraggingSelfVideo(true);
@@ -1631,14 +1712,54 @@ export default function VideoMeetComponent() {
                         })}
                     </div>
 
-                    {/* Student Live MCQ Widget (On-Screen) */}
-                    {activeMcq && (
+                    {/* Student Live MCQ Widget (On-Screen & Draggable & Minimizable) */}
+                    {activeMcq && mcqMinimized && (
+                        <Paper
+                            elevation={8}
+                            onMouseDown={handleMcqMouseDown}
+                            onTouchStart={handleMcqTouchStart}
+                            sx={{
+                                position: 'fixed',
+                                left: `${mcqCardPos.x}px`,
+                                top: `${mcqCardPos.y}px`,
+                                zIndex: 100,
+                                cursor: isDraggingMcqCard ? "grabbing" : "grab",
+                                backgroundColor: '#1c1c20',
+                                border: '2px solid #007afc',
+                                borderRadius: '24px',
+                                px: 2,
+                                py: 0.8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5,
+                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+                                userSelect: 'none'
+                            }}
+                        >
+                            <DragIndicatorIcon sx={{ color: '#6b7280', fontSize: 18 }} />
+                            <QuizIcon sx={{ color: '#007afc', fontSize: 20 }} />
+                            <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 700, fontSize: '0.85rem' }}>
+                                Live MCQ ({`00:${mcqTimeLeft < 10 ? '0' + mcqTimeLeft : mcqTimeLeft}`})
+                            </Typography>
+                            <Tooltip title="Expand Quiz View">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setMcqMinimized(false)}
+                                    sx={{ color: '#ffffff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' } }}
+                                >
+                                    <OpenInFullIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </Paper>
+                    )}
+
+                    {activeMcq && !mcqMinimized && (
                         <Paper
                             elevation={12}
                             sx={{
                                 position: 'fixed',
-                                top: 80,
-                                left: 24,
+                                top: `${mcqCardPos.y}px`,
+                                left: `${mcqCardPos.x}px`,
                                 width: 380,
                                 maxHeight: 'calc(100vh - 160px)',
                                 backgroundColor: '#222226',
@@ -1648,27 +1769,34 @@ export default function VideoMeetComponent() {
                                 backdropFilter: 'blur(8px)',
                                 zIndex: 100,
                                 display: 'flex',
-                                flexDirection: 'column'
+                                flexDirection: 'column',
+                                overflow: 'hidden'
                             }}
                         >
-                            {/* Header Bar (Fixed Top) */}
+                            {/* Header Bar (Fixed Top & Draggable) */}
                             <Box
+                                onMouseDown={handleMcqMouseDown}
+                                onTouchStart={handleMcqTouchStart}
                                 sx={{
                                     flexShrink: 0,
-                                    padding: '16px',
+                                    padding: '12px 16px',
                                     borderBottom: '1px solid #2e2e34',
                                     display: 'flex',
                                     justifyContent: 'space-between',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    cursor: isDraggingMcqCard ? "grabbing" : "grab",
+                                    userSelect: "none",
+                                    backgroundColor: '#1c1c20'
                                 }}
                             >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <DragIndicatorIcon sx={{ color: '#6b7280', fontSize: 18 }} />
                                     <QuizIcon sx={{ color: '#007afc' }} />
-                                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.95rem' }}>
                                         Live Classroom MCQ
                                     </Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                                     <Chip 
                                         label={`00:${mcqTimeLeft < 10 ? '0' + mcqTimeLeft : mcqTimeLeft}`}
                                         sx={{ 
@@ -1680,17 +1808,28 @@ export default function VideoMeetComponent() {
                                         }}
                                         size="small"
                                     />
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => {
-                                            setActiveMcq(null);
-                                            setQuizFeedback(null);
-                                            setStudentSelectedOption(null);
-                                        }}
-                                        sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
-                                    >
-                                        <CloseIcon fontSize="small" />
-                                    </IconButton>
+                                    <Tooltip title="Minimize to Floating Badge (Full Video View)">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => setMcqMinimized(true)}
+                                            sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
+                                        >
+                                            <RemoveIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Close Quiz View">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                setActiveMcq(null);
+                                                setQuizFeedback(null);
+                                                setStudentSelectedOption(null);
+                                            }}
+                                            sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
+                                        >
+                                            <CloseIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
                                 </Box>
                             </Box>
 
