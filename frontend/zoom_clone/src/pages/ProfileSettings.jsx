@@ -74,7 +74,7 @@ const inputSx = {
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
-  const { currentUser, userRole } = useContext(AuthContext);
+  const { currentUser, userRole, setCurrentUser } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState(0); // 0: Profile, 1: Security, 2: Preferences
   
@@ -84,11 +84,20 @@ export default function ProfileSettings() {
   const [profileErrors, setProfileErrors] = useState({});
   const [passwordErrors, setPasswordErrors] = useState({});
 
+  const getDerivedEmail = (user) => {
+    if (user?.email) return user.email;
+    if (user?.username && user.username.includes("@")) return user.username;
+    if (user?.username) return `${user.username}@synclearn.edu`;
+    return "";
+  };
+
+  const activeUser = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+
   // General Profile State
-  const [fullName, setFullName] = useState(currentUser?.name || "Alex Morgan");
-  const [username, setUsername] = useState(currentUser?.username || "alex_morgan");
-  const [email, setEmail] = useState(currentUser?.email || "alex.morgan@synclearn.edu");
-  const [bio, setBio] = useState("Lead Trainer & Computer Science Educator");
+  const [fullName, setFullName] = useState(activeUser?.name || "");
+  const [username, setUsername] = useState(activeUser?.username || "");
+  const [email, setEmail] = useState(getDerivedEmail(activeUser));
+  const [bio, setBio] = useState("");
   const [organization, setOrganization] = useState("SyncLearn Learning Institute");
   const [avatarUrl, setAvatarUrl] = useState("");
 
@@ -119,19 +128,23 @@ export default function ProfileSettings() {
 
   // Load from localStorage
   useEffect(() => {
-    const savedProfile = JSON.parse(localStorage.getItem("viora_user_profile_db") || "null");
+    const user = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (user) {
+      const userKey = user.username || user.email || "default";
+      const savedProfile = JSON.parse(localStorage.getItem(`viora_user_profile_${userKey}`) || "null");
+      const derivedEmail = getDerivedEmail(user);
+
+      setFullName(savedProfile?.fullName || user.name || "");
+      setUsername(savedProfile?.username || user.username || "");
+      setEmail(savedProfile?.email || derivedEmail);
+      setBio(savedProfile?.bio || "");
+      setOrganization(savedProfile?.organization || "SyncLearn Learning Institute");
+      setAvatarUrl(savedProfile?.avatarUrl || "");
+    }
+
     const savedPrefs = JSON.parse(localStorage.getItem("viora_user_settings_db") || "null");
     const savedTests = JSON.parse(localStorage.getItem("viora_tests_db") || "[]");
     const savedSubmissions = JSON.parse(localStorage.getItem("viora_test_submissions_db") || "[]");
-
-    if (savedProfile) {
-      setFullName(savedProfile.fullName || fullName);
-      setUsername(savedProfile.username || username);
-      setEmail(savedProfile.email || email);
-      setBio(savedProfile.bio || bio);
-      setOrganization(savedProfile.organization || organization);
-      setAvatarUrl(savedProfile.avatarUrl || "");
-    }
 
     if (savedPrefs) {
       setNotifySubmissions(savedPrefs.notifySubmissions ?? true);
@@ -144,7 +157,7 @@ export default function ProfileSettings() {
 
     setTotalTestsCreated(savedTests.length);
     setTotalTestsTaken(savedSubmissions.length);
-  }, []);
+  }, [currentUser]);
 
   const handleSaveProfile = async () => {
     setProfileErrors({});
@@ -161,8 +174,7 @@ export default function ProfileSettings() {
     }
 
     setIsSavingProfile(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     const profileData = {
       fullName,
@@ -173,7 +185,23 @@ export default function ProfileSettings() {
       avatarUrl
     };
 
-    localStorage.setItem("viora_user_profile_db", JSON.stringify(profileData));
+    const user = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+    const userKey = user?.username || user?.email || "default";
+    localStorage.setItem(`viora_user_profile_${userKey}`, JSON.stringify(profileData));
+
+    if (user) {
+      const updatedUser = {
+        ...user,
+        name: fullName,
+        username: username,
+        email: email
+      };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      if (setCurrentUser) {
+        setCurrentUser(updatedUser);
+      }
+    }
+
     toast.success("Profile details saved successfully!");
     setIsSavingProfile(false);
   };

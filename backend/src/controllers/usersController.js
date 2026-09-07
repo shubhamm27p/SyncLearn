@@ -30,6 +30,7 @@ const login = async (req, res) => {
                 user: {
                     name: user.name,
                     username: user.username,
+                    email: user.email || (user.username && user.username.includes("@") ? user.username : `${user.username}@synclearn.edu`),
                     role: user.role || 'student'
                 }
             });
