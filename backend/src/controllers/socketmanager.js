@@ -112,7 +112,7 @@ export const connectToSocket = (server) => {
                 .eq('token', token)
                 .maybeSingle();
 
-            if (user && user.is_active) {
+            if (user && user.is_active !== false) {
                 socket.authUser = user;
                 return next();
             } else {

@@ -352,26 +352,7 @@ export default function LandingPage() {
                                 >
                                     Get Started Free
                                 </Button>
-                                <Button
-                                    onClick={() => setSupportModalOpen(true)}
-                                    variant="outlined"
-                                    size="large"
-                                    startIcon={<PlayCircleIcon />}
-                                    sx={{
-                                        borderColor: "#cbd5e1",
-                                        color: "#334155",
-                                        "&:hover": { borderColor: "#2563eb", color: "#2563eb", backgroundColor: "rgba(37, 99, 235, 0.04)" },
-                                        fontWeight: 600,
-                                        fontSize: "16px",
-                                        textTransform: "none",
-                                        borderRadius: "12px",
-                                        px: 3.5,
-                                        py: 1.6,
-                                        transition: "all 0.2s"
-                                    }}
-                                >
-                                    Watch Demo
-                                </Button>
+
                             </Stack>
 
                             {/* Quick Trust Checks */}

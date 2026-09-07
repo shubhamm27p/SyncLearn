@@ -31,8 +31,8 @@ export const authMiddleware = async (req, res, next) => {
             return res.status(401).json({ message: 'Unauthorized: Invalid token' });
         }
 
-        if (!user.is_active) {
-            return res.status(403).json({ message: 'Forbidden: User account is inactive' });
+        if (user.is_active === false) {
+            return res.status(403).json({ message: "Account is disabled" });
         }
 
         if (user.role !== 'admin' && !(await getSiteOnlineStatus())) {
