@@ -271,6 +271,9 @@ export default function VideoMeetComponent() {
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = userMediaStream;
                 }
+                for (let id in connectionsRef.current) {
+                    addTracksToConnection(connectionsRef.current[id]);
+                }
             }
         } catch (err) {
             console.log("Error getting audio & video permissions:", err);
@@ -281,6 +284,9 @@ export default function VideoMeetComponent() {
                 window.localStream = videoStream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = videoStream;
+                }
+                for (let id in connectionsRef.current) {
+                    addTracksToConnection(connectionsRef.current[id]);
                 }
             } catch (err2) {
                 console.log("Error getting video permission:", err2);
@@ -307,14 +313,20 @@ export default function VideoMeetComponent() {
     }, [askForUsername]);
 
     const addTracksToConnection = (peerConn) => {
-        if (window.localStream) {
-            window.localStream.getTracks().forEach(track => {
-                try {
-                    peerConn.addTrack(track, window.localStream);
-                } catch (e) {
-                    console.log("Error adding track to peer connection:", e);
-                }
-            });
+        if (window.localStream && peerConn) {
+            try {
+                const senders = peerConn.getSenders ? peerConn.getSenders() : [];
+                window.localStream.getTracks().forEach(track => {
+                    const existingSender = senders.find(s => s.track && (s.track.id === track.id || s.track.kind === track.kind));
+                    if (existingSender) {
+                        existingSender.replaceTrack(track).catch(e => console.log("replaceTrack error:", e));
+                    } else {
+                        peerConn.addTrack(track, window.localStream);
+                    }
+                });
+            } catch (e) {
+                console.log("Error adding track to peer connection:", e);
+            }
         }
     };
 
@@ -554,27 +566,43 @@ export default function VideoMeetComponent() {
                             }
                         };
 
-                        const handleRemoteStream = (stream) => {
+                        const handleRemoteStream = (incomingStream, track) => {
                             setVideos(prevVideos => {
                                 const videoExists = prevVideos.find(v => v.socketId === socketListId);
-                                let updated;
                                 if (videoExists) {
-                                    updated = prevVideos.map(v => v.socketId === socketListId ? { ...v, stream: stream } : v);
+                                    const currentStream = videoExists.stream || new MediaStream();
+                                    if (incomingStream) {
+                                        incomingStream.getTracks().forEach(t => {
+                                            if (!currentStream.getTracks().some(existing => existing.id === t.id)) {
+                                                currentStream.addTrack(t);
+                                            }
+                                        });
+                                    }
+                                    if (track && !currentStream.getTracks().some(existing => existing.id === track.id)) {
+                                        currentStream.addTrack(track);
+                                    }
+                                    const updated = prevVideos.map(v => v.socketId === socketListId ? { ...v, stream: currentStream, lastUpdated: Date.now() } : v);
+                                    videoRef.current = updated;
+                                    return updated;
                                 } else {
-                                    updated = [...prevVideos, { socketId: socketListId, stream: stream, autoPlay: true, playsInline: true }];
+                                    let newStream = incomingStream || new MediaStream();
+                                    if (track && !newStream.getTracks().some(existing => existing.id === track.id)) {
+                                        newStream.addTrack(track);
+                                    }
+                                    const updated = [...prevVideos, { socketId: socketListId, stream: newStream, autoPlay: true, playsInline: true, lastUpdated: Date.now() }];
+                                    videoRef.current = updated;
+                                    return updated;
                                 }
-                                videoRef.current = updated;
-                                return updated;
                             });
                         };
 
                         connectionsRef.current[socketListId].ontrack = (event) => {
-                            const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
-                            handleRemoteStream(stream);
+                            const stream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+                            handleRemoteStream(stream, event.track);
                         };
 
                         connectionsRef.current[socketListId].onaddstream = (event) => {
-                            handleRemoteStream(event.stream);
+                            handleRemoteStream(event.stream, null);
                         };
 
                         addTracksToConnection(connectionsRef.current[socketListId]);
