@@ -1,7 +1,9 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const serverUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+// MCQ backend runs on a separate port (5000) from the main backend (8000).
+// Set VITE_MCQ_API_URL in your .env to point to the MCQ server.
+const serverUrl = import.meta.env.VITE_MCQ_API_URL || "http://localhost:5000";
 
 const API = axios.create({
   baseURL: `${serverUrl}/api`,

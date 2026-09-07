@@ -267,21 +267,17 @@ export default function LandingPage() {
                 <Typography variant="body2" sx={{ color: "#667085", fontSize: "14px" }}>
                     © {new Date().getFullYear()} SyncLearn. All rights reserved.
                 </Typography>
-                <Typography
-                    component="a"
-                    href="mailto:synclearn.pvt@gmail.com"
-                    sx={{
-                        color: "#667085",
-                        fontSize: "14px",
-                        textDecoration: "none",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                        "&:hover": { color: "#0e71eb", textDecoration: "underline" }
-                    }}
-                >
-                    <EmailIcon sx={{ fontSize: 16 }} /> Support: synclearn.pvt@gmail.com
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.5, sm: 2.5 }, flexWrap: "wrap" }}>
+                    <Typography component={Link} to="/about" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                        About SyncLearn
+                    </Typography>
+                    <Typography component={Link} to="/terms" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                        Terms & Conditions
+                    </Typography>
+                    <Typography component="a" href="mailto:synclearn.pvt@gmail.com" sx={{ color: "#667085", fontSize: "14px", textDecoration: "none", display: "flex", alignItems: "center", gap: 0.5, "&:hover": { color: "#0e71eb", textDecoration: "underline" } }}>
+                        <EmailIcon sx={{ fontSize: 16 }} /> Support
+                    </Typography>
+                </Box>
             </Box>
         </Box>
     );

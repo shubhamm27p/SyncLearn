@@ -12,6 +12,8 @@ import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
 import ProfileSettings from './pages/ProfileSettings.jsx';
 import NotFound from './pages/NotFound.jsx';
+import ApplicationDetails from './pages/ApplicationDetails.jsx';
+import TermsAndConditions from './pages/termsAndConditions.jsx';
 import { Toaster } from 'react-hot-toast';
 
 // MCQ Engine Components & Pages
@@ -49,6 +51,8 @@ function App() {
           <AuthProvider> 
             <Routes>
               <Route path='/' element={<LandingPage />} />
+              <Route path='/about' element={<ApplicationDetails />} />
+              <Route path='/terms' element={<TermsAndConditions />} />
               <Route path='/auth' element={<Authentication />} />
               <Route path='/home' element={<HomeComponent />} />
               <Route path='/history' element={<History />} />

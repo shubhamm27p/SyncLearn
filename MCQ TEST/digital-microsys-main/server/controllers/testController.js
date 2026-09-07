@@ -581,10 +581,14 @@ exports.getDashboardStats = async (req, res, next) => {
         Test.countDocuments(),
         User.countDocuments({ role: 'student' }),
         Result.countDocuments(),
+        // Count live tests: active/published with no time restriction OR within their time window
         Test.countDocuments({
           status: { $in: ['published', 'active'] },
-          startTime: { $lte: now },
-          endTime: { $gte: now },
+          $or: [
+            { startTime: { $exists: false }, endTime: { $exists: false } },
+            { startTime: null, endTime: null },
+            { startTime: { $lte: now }, endTime: { $gte: now } },
+          ],
         }),
         Test.find()
           .populate('createdBy', 'name')
