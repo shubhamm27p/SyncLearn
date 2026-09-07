@@ -777,6 +777,8 @@ const generateRtcTokenController = async (req, res) => {
         console.error("Generate RTC Token Error:", e);
         return res.status(500).json({ message: `Failed to generate RTC token: ${e.message || e}` });
     }
+};
+
 export const submitSupportTicket = async (req, res) => {
     try {
         const { senderEmail, subject, message } = req.body;
