@@ -26,7 +26,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import KeyIcon from '@mui/icons-material/Key';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal';
@@ -114,6 +114,11 @@ export default function Authentication() {
   const [open, setOpen] = useState(false);
 
   const routeTo = useNavigate();
+  const location = useLocation();
+
+  const goAfterAuthentication = () => {
+    routeTo(location.state?.from || '/home', { replace: true });
+  };
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event) => {
@@ -168,7 +173,7 @@ export default function Authentication() {
         setMessage(result || 'Logged in successfully!');
         setOpen(true);
         setError('');
-        routeTo('/home');
+        goAfterAuthentication();
       } else if (formState === 1) {
         let result = await handleRegister(name, username, password, role);
         setMessage(result || 'Registered successfully!');
@@ -223,7 +228,7 @@ export default function Authentication() {
       setMessage(result || 'Signed in with Google!');
       setOpen(true);
       setGoogleModalOpen(false);
-      routeTo('/home');
+      goAfterAuthentication();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Google Sign-In failed');

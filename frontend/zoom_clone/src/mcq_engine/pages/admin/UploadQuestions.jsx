@@ -71,20 +71,46 @@ const UploadQuestions = () => {
     if (!valid) return toast.error('All required question fields (A, B, C, D) must be filled');
 
     setSubmitting(true);
+    const payload = questions.map((q, idx) => ({
+      _id: `q_${Date.now()}_${idx}`,
+      ...q,
+      questionNo: q.questionNo ? Number(q.questionNo) : (existing.length + idx + 1),
+      optionE: q.showOptionE ? q.optionE : '',
+      marks: Number(q.marks) || 1,
+    }));
+
     try {
-      const payload = questions.map((q, idx) => ({
-        ...q,
-        questionNo: q.questionNo ? Number(q.questionNo) : (existing.length + idx + 1),
-        optionE: q.showOptionE ? q.optionE : '',
-        marks: Number(q.marks) || 1,
-      }));
       const res = await API.post(`/tests/${id}/questions`, { questions: payload });
-      toast.success(res.data.message);
+      toast.success(res.data?.message || 'Questions added successfully!');
+    } catch (err) {
+      console.warn("Manual questions server upload unavailable, saving to local storage fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const testIndex = localTests.findIndex(t => t._id === id || t.id === id);
+
+      if (testIndex !== -1 || id.startsWith('test_local_')) {
+        if (testIndex !== -1) {
+          const currentQs = localTests[testIndex].questions || [];
+          localTests[testIndex].questions = [...currentQs, ...payload];
+          localTests[testIndex].questionCount = localTests[testIndex].questions.length;
+          localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        } else {
+          const newLocalTest = {
+            _id: id,
+            title: testTitle || 'Local Test',
+            questions: payload,
+            questionCount: payload.length,
+            createdAt: new Date().toISOString()
+          };
+          localTests.unshift(newLocalTest);
+          localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        }
+        toast.success('Questions added successfully!');
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to add questions');
+      }
+    } finally {
       setQuestions([{ ...emptyQ }]);
       fetchExisting();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add questions');
-    } finally {
       setSubmitting(false);
     }
   };
@@ -112,24 +138,64 @@ const UploadQuestions = () => {
   };
 
   const handleCsvUpload = async () => {
-    if (!csvFile) return toast.error('Select a CSV file first');
+    if (!csvFile && csvPreview.length === 0) return toast.error('Select a CSV file first');
     setCsvUploading(true);
+    let successMessage = 'Questions uploaded successfully!';
+
     try {
       const formData = new FormData();
       formData.append('file', csvFile);
       const res = await API.post(`/tests/${id}/questions/csv`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success(res.data.message);
-      setCsvFile(null);
-      setCsvPreview([]);
-      if (fileRef.current) fileRef.current.value = '';
-      fetchExisting();
+      successMessage = res.data?.message || successMessage;
     } catch (err) {
-      toast.error(err.response?.data?.message || 'CSV upload failed');
-    } finally {
-      setCsvUploading(false);
+      console.warn("CSV server upload unavailable, saving questions to local storage fallback:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      const testIndex = localTests.findIndex(t => t._id === id || t.id === id);
+
+      if (testIndex !== -1 || id.startsWith('test_local_')) {
+        const newQs = csvPreview.map((row, idx) => ({
+          _id: `q_${Date.now()}_${idx}`,
+          questionNo: Number(row.questionno) || Number(row['q. no']) || Number(row.qno) || (existing.length + idx + 1),
+          questionText: row.questiontext || row.question || row.text || '',
+          optionA: row.optiona || row.a || '',
+          optionB: row.optionb || row.b || '',
+          optionC: row.optionc || row.c || '',
+          optionD: row.optiond || row.d || '',
+          optionE: row.optione || row.e || '',
+          marks: Number(row.marks) || 1,
+        }));
+
+        if (testIndex !== -1) {
+          const currentQs = localTests[testIndex].questions || [];
+          localTests[testIndex].questions = [...currentQs, ...newQs];
+          localTests[testIndex].questionCount = localTests[testIndex].questions.length;
+          localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        } else {
+          const newLocalTest = {
+            _id: id,
+            title: testTitle || 'Local Test',
+            questions: newQs,
+            questionCount: newQs.length,
+            createdAt: new Date().toISOString()
+          };
+          localTests.unshift(newLocalTest);
+          localStorage.setItem('viora_tests_db', JSON.stringify(localTests));
+        }
+      } else {
+        toast.error(err.response?.data?.message || 'CSV upload failed');
+        setCsvUploading(false);
+        return;
+      }
     }
+
+    toast.success(successMessage);
+    setCsvFile(null);
+    setCsvPreview([]);
+    if (fileRef.current) fileRef.current.value = '';
+    fetchExisting();
+    setCsvUploading(false);
   };
 
   const downloadSampleCSV = () => {

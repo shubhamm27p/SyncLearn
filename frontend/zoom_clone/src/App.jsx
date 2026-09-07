@@ -14,6 +14,7 @@ import ProfileSettings from './pages/ProfileSettings.jsx';
 import NotFound from './pages/NotFound.jsx';
 import ApplicationDetails from './pages/ApplicationDetails.jsx';
 import TermsAndConditions from './pages/termsAndConditions.jsx';
+import withAuth from './utils/withAuth.jsx';
 import { Toaster } from 'react-hot-toast';
 
 // MCQ Engine Components & Pages
@@ -41,6 +42,8 @@ import ResultDetail from './mcq_engine/pages/student/ResultDetail.jsx';
 import TakeCodingTest from './mcq_engine/pages/student/TakeCodingTest.jsx';
 import CodingResults from './mcq_engine/pages/student/CodingResults.jsx';
 import CombinedResult from './mcq_engine/pages/student/CombinedResult.jsx';
+
+const ProtectedVideoMeetComponent = withAuth(VideoMeetComponent);
 
 function App() {
   return (
@@ -91,7 +94,7 @@ function App() {
               <Route path='/student/coding-results/:testId' element={<CodingResults />} />
               <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
 
-              <Route path="/:url" element={<VideoMeetComponent />} />
+              <Route path="/:url" element={<ProtectedVideoMeetComponent />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
