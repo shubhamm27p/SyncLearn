@@ -30,12 +30,12 @@ export default function TermsAndConditions() {
             </Box>
             <Container maxWidth="md" sx={{ py: { xs: 5, md: 8 } }}>
                 <Button component={Link} to="/" startIcon={<ArrowBackIcon />} sx={{ color: "#475467", textTransform: "none", mb: 4 }}>Back to home</Button>
-                <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 48 }, fontWeight: 800, lineHeight: 1.15, mb: 2 }}>Terms and Conditions</Typography>
+                <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 48 }, fontWeight: 800, lineHeight: 1.15, mb: 2, color: "#101828" }}>Terms and Conditions</Typography>
                 <Typography sx={{ color: "#667085", mb: 5 }}>Last updated: September 7, 2026</Typography>
                 <Box sx={{ backgroundColor: "#ffffff", border: "1px solid #eaecf0", borderRadius: "12px", p: { xs: 3, md: 5 } }}>
                     {sections.map(([title, body], index) => (
                         <Box key={title} sx={{ mb: index === sections.length - 1 ? 0 : 4 }}>
-                            <Typography variant="h2" sx={{ fontSize: 20, fontWeight: 700, mb: 1.2 }}>{title}</Typography>
+                            <Typography variant="h2" sx={{ fontSize: 20, fontWeight: 700, mb: 1.2, color: "#101828" }}>{title}</Typography>
                             <Typography sx={{ color: "#475467", lineHeight: 1.75 }}>{body}</Typography>
                             {index < sections.length - 1 && <Divider sx={{ mt: 4 }} />}
                         </Box>
