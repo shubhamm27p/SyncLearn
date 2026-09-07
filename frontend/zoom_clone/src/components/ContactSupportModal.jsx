@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
   Dialog,
   DialogTitle,
@@ -12,7 +13,8 @@ import {
   Stack,
   Divider,
   Chip,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -33,6 +35,7 @@ export default function ContactSupportModal({ open, onClose, defaultSubject = ""
   const [subject, setSubject] = useState(defaultSubject);
   const [message, setMessage] = useState(defaultMessage);
   const [senderEmail, setSenderEmail] = useState("");
+  const [sending, setSending] = useState(false);
 
   const handleCopy = () => {
     copySupportEmailToClipboard();
@@ -58,14 +61,31 @@ export default function ContactSupportModal({ open, onClose, defaultSubject = ""
     onClose();
   };
 
-  const handleSendTicket = (e) => {
+  const handleSendTicket = async (e) => {
     e.preventDefault();
     if (!message.trim()) {
       toast.error("Please enter a message before sending.");
       return;
     }
-    // Launch Gmail compose with the pre-filled message
-    handleGmailCompose();
+    setSending(true);
+    try {
+      const serverUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+      const res = await axios.post(`${serverUrl}/api/v1/users/support/submit`, {
+        senderEmail: senderEmail.trim(),
+        subject: subject.trim(),
+        message: message.trim()
+      });
+      toast.success(res.data.message || "Support ticket submitted successfully!");
+      setSubject("");
+      setMessage("");
+      setSenderEmail("");
+      onClose();
+    } catch (err) {
+      console.error("Support submission error:", err);
+      toast.error(err.response?.data?.message || "Failed to send support ticket. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -271,7 +291,8 @@ export default function ContactSupportModal({ open, onClose, defaultSubject = ""
           <Button
             type="submit"
             variant="contained"
-            startIcon={<SendIcon />}
+            disabled={sending}
+            startIcon={sending ? <CircularProgress size={18} color="inherit" /> : <SendIcon />}
             sx={{
               backgroundColor: "#0e71eb",
               color: "#ffffff",
@@ -283,7 +304,7 @@ export default function ContactSupportModal({ open, onClose, defaultSubject = ""
               mt: 0.5
             }}
           >
-            Compose & Send Message
+            {sending ? "Sending Support Ticket..." : "Send Ticket Directly (In-App)"}
           </Button>
         </Box>
       </DialogContent>

@@ -20,7 +20,7 @@ import {
     getMediaPermissions,
     updateMediaPermission,
     generateRtcTokenController
-    ,getSiteStatus, updateSiteStatus
+    ,getSiteStatus, updateSiteStatus, submitSupportTicket
 } from "../controllers/usersController.js";
 import { authLimiter } from "../middlewares/rateLimiter.js";
 import { authMiddleware, adminMiddleware } from "../middlewares/authMiddleware.js";
@@ -35,6 +35,7 @@ router.route("/google-login").post(authLimiter, googleLogin);
 router.route("/forgot-password").post(authLimiter, forgotPassword);
 router.route("/send-password-to-mail").post(authLimiter, sendPasswordToMail);
 router.route("/reset-password").post(authLimiter, resetPassword);
+router.route("/support/submit").post(authLimiter, submitSupportTicket);
 
 // Public status read is needed for the site availability page.
 router.route("/site-status").get(getSiteStatus);

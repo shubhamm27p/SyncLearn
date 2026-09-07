@@ -3,7 +3,7 @@ import { supabase } from "../utils/supabase.js";
 import { generateAgoraRtcToken, RtcRole } from "../utils/agoraTokenGenerator.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { sendPasswordResetCodeEmail } from "../utils/sendEmail.js";
+import { sendPasswordResetCodeEmail, sendSupportTicketEmail } from "../utils/sendEmail.js";
 
 let inMemorySiteStatus = true;
 let siteStatusCache = { value: null, expiresAt: 0 };
@@ -777,6 +777,27 @@ const generateRtcTokenController = async (req, res) => {
         console.error("Generate RTC Token Error:", e);
         return res.status(500).json({ message: `Failed to generate RTC token: ${e.message || e}` });
     }
+export const submitSupportTicket = async (req, res) => {
+    try {
+        const { senderEmail, subject, message } = req.body;
+        if (!message || !message.trim()) {
+            return res.status(httpStatus.BAD_REQUEST).json({ message: "Message content is required." });
+        }
+
+        const result = await sendSupportTicketEmail({
+            senderEmail: senderEmail || req.user?.username || "Anonymous User",
+            subject: subject || "SyncLearn Support Request",
+            message: message.trim()
+        });
+
+        return res.status(httpStatus.OK).json({
+            message: "Support ticket sent successfully via Nodemailer!",
+            details: result
+        });
+    } catch (error) {
+        console.error("[submitSupportTicket] Error submitting ticket:", error);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ message: "Internal server error submitting support ticket." });
+    }
 };
 
 export { 
@@ -800,4 +821,4 @@ export {
     getMediaPermissions,
     updateMediaPermission,
     generateRtcTokenController
-};
+};
