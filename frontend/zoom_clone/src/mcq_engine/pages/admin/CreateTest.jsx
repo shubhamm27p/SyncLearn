@@ -73,6 +73,7 @@ const CreateTest = () => {
       createdBy: activeUser.id || activeUser._id || 'trainer_admin',
     };
 
+    let newTest;
     try {
       const res = await API.post('/tests', payload);
       if (res.data?.data) {
