@@ -502,7 +502,30 @@ export default function VideoMeetComponent() {
     };
 
     let connectToSocketServer = () => {
-        socketRef.current = io.connect(server_url);
+        socketRef.current = io.connect(server_url, {
+            auth: token ? { token } : undefined
+        });
+
+        socketRef.current.on("socket-error", ({ message }) => {
+            setSnackbarMsg(message || "You are not authorized to perform that action.");
+            setOpenSnackbar(true);
+        });
+
+        socketRef.current.on("connect_error", (error) => {
+            console.error("Socket connection failed:", error.message);
+            if (/login|inactive|invalid|only students/i.test(error.message || "")) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("userRole");
+                routeTo("/auth", {
+                    replace: true,
+                    state: { from: window.location.pathname, message: "Please log in or sign up before joining a meeting." }
+                });
+                return;
+            }
+            setSnackbarMsg("Unable to connect to the meeting server.");
+            setOpenSnackbar(true);
+        });
 
         socketRef.current.on('signal', gotMessageFromServer);
 

@@ -96,11 +96,15 @@ export default function History() {
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between', 
-                px: { xs: 3, md: 6 }, 
-                py: 2, 
+                px: { xs: 2, sm: 3, md: 6 }, 
+                py: 1.8, 
                 backgroundColor: '#ffffff', 
                 borderBottom: '1px solid #eaecf0',
-                mb: 4 
+                mb: 4,
+                position: 'sticky',
+                top: 0,
+                zIndex: 1100,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => routeTo('/home')}>
                     <VideoCallIcon sx={{ fontSize: 32, color: '#0e71eb' }} />
@@ -108,14 +112,26 @@ export default function History() {
                         SyncLearn
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Button 
+                        onClick={() => routeTo("/student/dashboard")}
+                        sx={{ color: '#344054', fontWeight: 500, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
+                    >
+                        Student Portal
+                    </Button>
+                    <Button 
+                        onClick={() => routeTo("/tests")}
+                        sx={{ color: '#0e71eb', fontWeight: 600, fontSize: '13px', textTransform: 'none', display: { xs: 'none', sm: 'inline-flex' } }}
+                    >
+                        Test Hub
+                    </Button>
                     <Button 
                         variant="outlined" 
                         startIcon={<HomeIcon />} 
                         onClick={() => routeTo("/home")}
-                        sx={{ color: '#344054', borderColor: '#d1d5db', '&:hover': { borderColor: '#0e71eb', backgroundColor: '#f9fafb' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px' }}
+                        sx={{ color: '#344054', borderColor: '#d1d5db', '&:hover': { borderColor: '#0e71eb', backgroundColor: '#f9fafb' }, textTransform: 'none', fontWeight: 600, borderRadius: '8px', fontSize: '13px' }}
                     >
-                        Back to Home
+                        Dashboard
                     </Button>
                 </Box>
             </Box>

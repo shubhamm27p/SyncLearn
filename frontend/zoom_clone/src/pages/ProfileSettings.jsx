@@ -293,7 +293,7 @@ export default function ProfileSettings() {
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fa", color: "#101828", py: 4 }}>
       <Container maxWidth="lg">
         {/* Navigation & Header Bar */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4, pb: 2, borderBottom: "1px solid #eaecf0" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4, pb: 2, borderBottom: "1px solid #eaecf0", flexWrap: "wrap", gap: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer" }} onClick={() => navigate("/home")}>
             <VideoCallIcon sx={{ fontSize: 32, color: "#0e71eb" }} />
             <Typography variant="h6" sx={{ fontWeight: 700, color: "#101828", fontSize: "20px", letterSpacing: "-0.4px" }}>
@@ -301,14 +301,26 @@ export default function ProfileSettings() {
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
+            <Button
+              onClick={() => navigate("/student/dashboard")}
+              sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+            >
+              Student Portal
+            </Button>
+            <Button
+              onClick={() => navigate("/tests")}
+              sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+            >
+              Test Hub
+            </Button>
             <Button
               variant="outlined"
               startIcon={<HomeIcon />}
               onClick={() => navigate("/home")}
               sx={{ color: "#344054", borderColor: "#d1d5db", bgcolor: "#ffffff", "&:hover": { borderColor: "#0e71eb", bgcolor: "#f9fafb" }, textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
             >
-              Back to Dashboard
+              Dashboard
             </Button>
             <Button
               variant="outlined"
@@ -316,9 +328,10 @@ export default function ProfileSettings() {
               startIcon={<LogoutIcon />}
               onClick={() => {
                 localStorage.removeItem("token");
+                sessionStorage.removeItem("admin_authenticated");
                 navigate("/auth");
               }}
-              sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
+              sx={{ color: "#ef4444", borderColor: "#fca5a5", textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
             >
               Logout
             </Button>

@@ -23,7 +23,7 @@ import {
     ,getSiteStatus, updateSiteStatus
 } from "../controllers/usersController.js";
 import { authLimiter } from "../middlewares/rateLimiter.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { authMiddleware, adminMiddleware } from "../middlewares/authMiddleware.js";
 import { getActiveRooms } from "../controllers/socketmanager.js";
  
 const router = Router();
@@ -36,16 +36,21 @@ router.route("/forgot-password").post(authLimiter, forgotPassword);
 router.route("/send-password-to-mail").post(authLimiter, sendPasswordToMail);
 router.route("/reset-password").post(authLimiter, resetPassword);
 
-// Admin Routes (Note: In a full implementation, you'd add an adminMiddleware here)
-router.route("/admin/users").get(getAllUsers);
+// Public status read is needed for the site availability page.
+router.route("/site-status").get(getSiteStatus);
+
+// Admin routes require a valid server-side session and an admin/trainer role.
+router.route("/admin/users").get(authMiddleware, adminMiddleware, getAllUsers);
 router.route("/admin/users/:userId")
-    .patch(updateUserRoleOrStatus)
-    .delete(deleteUser);
-router.route("/admin/media-permissions/:sessionId").get(getMediaPermissions).post(updateMediaPermission);
-router.route("/site-status").get(getSiteStatus).put(updateSiteStatus);
+    .patch(authMiddleware, adminMiddleware, updateUserRoleOrStatus)
+    .delete(authMiddleware, adminMiddleware, deleteUser);
+router.route("/admin/media-permissions/:sessionId")
+    .get(authMiddleware, adminMiddleware, getMediaPermissions)
+    .post(authMiddleware, adminMiddleware, updateMediaPermission);
+router.route("/site-status").put(authMiddleware, adminMiddleware, updateSiteStatus);
 
 // Protected Routes (Require Token Authorization)
-router.use(authMiddleware); // Apply to all routes below this line
+router.use(authMiddleware);
 
 router.route("/profile").get(getUserProfile);
 router.route("/create-quiz").post(createQuiz);

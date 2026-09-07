@@ -182,13 +182,10 @@ export default function Authentication() {
         setFormState(0);
       } else if (formState === 2) {
         let result = await handleForgotPassword(username);
-        setMessage(result.message || 'New password generated and sent to your email!');
+        setMessage(result.message || 'A password reset code was sent to your email.');
         setOpen(true);
         setError('');
-        if (result.newPassword) {
-          setPassword(result.newPassword);
-        }
-        setFormState(0);
+        setFormState(3);
       } else if (formState === 3) {
         let result = await handleResetPassword(username, resetToken, newPassword);
         setMessage(result || 'Password reset successfully!');

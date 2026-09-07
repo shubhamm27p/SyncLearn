@@ -61,3 +61,35 @@ export const sendNewPasswordEmail = async (toEmail, newPassword, username) => {
         return { success: true, simulated: true, error: err.message };
     }
 };
+
+export const sendPasswordResetCodeEmail = async (toEmail, resetCode, username) => {
+    const host = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.EMAIL_PORT || "587");
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    console.log(`[EMAIL DISPATCH] Password reset code for ${username}: ${resetCode}`);
+    if (!user || !pass) {
+        console.warn("[EMAIL UTILITY] Email credentials are not configured; reset code logged for local development.");
+        return { success: true, simulated: true };
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: { user, pass }
+        });
+        await transporter.sendMail({
+            from: `"Viora Meetings" <${user}>`,
+            to: toEmail,
+            subject: "Your Viora password reset code",
+            html: `<p>Hello <strong>${username}</strong>,</p><p>Your password reset code is:</p><h2>${resetCode}</h2><p>This code expires in 15 minutes.</p>`
+        });
+        return { success: true };
+    } catch (err) {
+        console.error("[EMAIL UTILITY] Failed to send reset code:", err.message);
+        throw err;
+    }
+};

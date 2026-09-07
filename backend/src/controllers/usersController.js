@@ -3,7 +3,7 @@ import { supabase } from "../utils/supabase.js";
 import { generateAgoraRtcToken, RtcRole } from "../utils/agoraTokenGenerator.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import { sendNewPasswordEmail } from "../utils/sendEmail.js";
+import { sendPasswordResetCodeEmail } from "../utils/sendEmail.js";
 
 let inMemorySiteStatus = true;
 
@@ -79,12 +79,13 @@ const login = async (req, res) => {
     }
 
     try {
-        if (await getSiteOnlineStatus() === false) {
-            return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
-        }
         const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
         if (error || !user) {
             return res.status(404).json({ message: "User Not Found!" });
+        }
+
+        if (user.role !== 'admin' && user.role !== 'trainer' && await getSiteOnlineStatus() === false) {
+            return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -113,7 +114,7 @@ const login = async (req, res) => {
 };
 
 const register = async (req, res) => {
-    const { name, username, password, role } = req.body || {};
+    const { name, username, password } = req.body || {};
 
     if (!name || !username || !password) {
         return res.status(400).json({ message: "Please provide all required fields" });
@@ -147,7 +148,7 @@ const register = async (req, res) => {
             username: username,
             email: targetEmail,
             password: hashedPassword,
-            role: role || 'student'
+            role: 'student'
         }]);
 
         if (error) throw error;
@@ -258,7 +259,7 @@ const deleteMeetingFromHistory = async (req, res) => {
 };
 
 const googleLogin = async (req, res) => {
-    const { email, name, googleId, role } = req.body || {};
+    const { email, name, googleId } = req.body || {};
 
     if (!email) {
         return res.status(400).json({ message: "Email is required for Google Sign-In" });
@@ -274,7 +275,7 @@ const googleLogin = async (req, res) => {
                 name: name || email.split('@')[0],
                 email: email,
                 username: email,
-                role: role || 'student',
+                role: 'student',
                 google_id: googleId || `google_${Date.now()}`,
                 token: sessionToken
             }]).select().single();
@@ -285,8 +286,6 @@ const googleLogin = async (req, res) => {
             if (googleId) updateData.google_id = googleId;
             if (name && !user.name) updateData.name = name;
             if (!user.email) updateData.email = email;
-            if (role) updateData.role = role;
-
             const { data: updatedUser, error } = await supabase.from('users').update(updateData).eq('id', user.id).select().single();
             if (error) throw error;
             user = updatedUser;
@@ -320,25 +319,20 @@ const forgotPassword = async (req, res) => {
             return res.status(404).json({ message: "No account found with that username or email." });
         }
 
-        const newPassword = `Viora#${Math.floor(100000 + Math.random() * 900000)}`;
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const resetToken = crypto.randomBytes(24).toString("hex");
 
         const { error } = await supabase.from('users').update({
-            password: hashedPassword,
-            reset_password_token: null,
-            reset_password_expires: null
+            reset_password_token: resetToken,
+            reset_password_expires: new Date(Date.now() + 15 * 60 * 1000).toISOString()
         }).eq('id', user.id);
         
         if (error) throw error;
 
         const targetEmail = user.email || (user.username.includes("@") ? user.username : `${user.username}@example.com`);
-        await sendNewPasswordEmail(targetEmail, newPassword, user.username);
+        await sendPasswordResetCodeEmail(targetEmail, resetToken, user.username);
 
         return res.status(200).json({
-            message: `A new password (${newPassword}) has been generated and sent to your email (${targetEmail})!`,
-            newPassword: newPassword,
-            email: targetEmail,
-            username: user.username
+            message: "A password reset code has been sent to your email."
         });
     } catch (e) {
         console.error("Forgot Password error:", e);

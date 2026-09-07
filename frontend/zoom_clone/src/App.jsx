@@ -65,35 +65,45 @@ function App() {
               <Route path='/settings' element={<ProfileSettings />} />
 
               {/* Integrated MCQ Engine Shell */}
-              <Route element={<DashboardLayout />}>
-                <Route path='/tests' element={<Dashboard />} />
-                <Route path='/tests/create' element={<CreateTest />} />
-                <Route path='/tests/gradebook' element={<ViewResults />} />
-                
-                <Route path='/admin/dashboard' element={<MCQAdminDashboard />} />
-                <Route path='/admin/tests' element={<ManageTests />} />
-                <Route path='/admin/tests/create' element={<CreateTest />} />
-                <Route path='/admin/tests/:id/edit' element={<EditTest />} />
-                <Route path='/admin/tests/:id/questions' element={<UploadQuestions />} />
-                <Route path='/admin/tests/:id/answerkey' element={<UploadAnswerKey />} />
-                <Route path='/admin/students' element={<ManageStudents />} />
-                <Route path='/admin/results' element={<ViewResults />} />
-                <Route path='/admin/tests/:id/coding' element={<ManageCodingProblems />} />
-                <Route path='/admin/tests/:id/coding-results' element={<ViewCodingSubmissions />} />
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
+                <Route element={<DashboardLayout />}>
+                  <Route path='/tests/create' element={<CreateTest />} />
+                  <Route path='/tests/gradebook' element={<ViewResults />} />
+                  <Route path='/admin/dashboard' element={<MCQAdminDashboard />} />
+                  <Route path='/admin/tests' element={<ManageTests />} />
+                  <Route path='/admin/tests/create' element={<CreateTest />} />
+                  <Route path='/admin/tests/:id/edit' element={<EditTest />} />
+                  <Route path='/admin/tests/:id/questions' element={<UploadQuestions />} />
+                  <Route path='/admin/tests/:id/answerkey' element={<UploadAnswerKey />} />
+                  <Route path='/admin/students' element={<ManageStudents />} />
+                  <Route path='/admin/results' element={<ViewResults />} />
+                  <Route path='/admin/tests/:id/coding' element={<ManageCodingProblems />} />
+                  <Route path='/admin/tests/:id/coding-results' element={<ViewCodingSubmissions />} />
+                </Route>
+              </Route>
 
-                <Route path='/student/dashboard' element={<StudentDashboard />} />
-                <Route path='/student/results' element={<MyResults />} />
-                <Route path='/student/results/:id' element={<ResultDetail />} />
+              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                <Route element={<DashboardLayout />}>
+                  <Route path='/tests' element={<Dashboard />} />
+                  <Route path='/student/dashboard' element={<StudentDashboard />} />
+                  <Route path='/student/results' element={<MyResults />} />
+                  <Route path='/student/results/:id' element={<ResultDetail />} />
+                </Route>
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
+                <Route path='/admin/combined-result/:testId/:studentId' element={<AdminCombinedResult />} />
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                <Route path='/student/test/:id' element={<TakeTest />} />
+                <Route path='/test/:testId/take' element={<TakeTest />} />
+                <Route path='/student/coding-test/:id' element={<TakeCodingTest />} />
+                <Route path='/student/coding-results/:testId' element={<CodingResults />} />
+                <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
               </Route>
 
               {/* Standalone Fullscreen MCQ & Coding Test Taking & Results */}
-              <Route path='/admin/combined-result/:testId/:studentId' element={<AdminCombinedResult />} />
-              <Route path='/student/test/:id' element={<TakeTest />} />
-              <Route path='/test/:testId/take' element={<TakeTest />} />
-              <Route path='/student/coding-test/:id' element={<TakeCodingTest />} />
-              <Route path='/student/coding-results/:testId' element={<CodingResults />} />
-              <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
-
               <Route path="/:url" element={<ProtectedVideoMeetComponent />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
