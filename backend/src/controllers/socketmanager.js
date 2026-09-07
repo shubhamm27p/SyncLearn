@@ -100,7 +100,7 @@ export const connectToSocket = (server) => {
             timeOnline[socket.id] = new Date();
 
             const isOwner = meetingHosts[path].ownerUsername === username;
-            if (isOwner || !meetingHosts[path].activeHostId) {
+            if (isOwner) {
                 meetingHosts[path].activeHostId = socket.id;
             }
 
@@ -220,9 +220,9 @@ export const connectToSocket = (server) => {
             }
 
             if (meetingHosts[userRoom]?.activeHostId === targetSocketId) {
-                meetingHosts[userRoom].activeHostId = connections[userRoom][0] || null;
+                meetingHosts[userRoom].activeHostId = null;
                 connections[userRoom].forEach((sId) => {
-                    if (socketUserMap[sId]) socketUserMap[sId].role = sId === meetingHosts[userRoom].activeHostId ? "trainer" : "student";
+                    if (socketUserMap[sId]) socketUserMap[sId].role = "student";
                 });
             }
 
@@ -413,9 +413,9 @@ export const connectToSocket = (server) => {
                     delete connections[userRoom];
                     delete meetingHosts[userRoom];
                 } else if (wasActiveHost) {
-                    meetingHosts[userRoom].activeHostId = connections[userRoom][0];
+                    meetingHosts[userRoom].activeHostId = null;
                     connections[userRoom].forEach((sId) => {
-                        if (socketUserMap[sId]) socketUserMap[sId].role = sId === meetingHosts[userRoom].activeHostId ? "trainer" : "student";
+                        if (socketUserMap[sId]) socketUserMap[sId].role = "student";
                     });
                     broadcastRoomState(io, userRoom);
                 }

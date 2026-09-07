@@ -29,7 +29,7 @@ API.interceptors.response.use(
   (error) => {
     // Network error (no response from server)
     if (!error.response) {
-      toast.error('Connection lost. Please check your internet.', { id: 'network-error' });
+      toast.error('Cannot reach the test server. Please try again shortly.', { id: 'network-error' });
       return Promise.reject(error);
     }
 
