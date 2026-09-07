@@ -1104,9 +1104,20 @@ export default function VideoMeetComponent() {
     };
 
     const copyMeetingLink = () => {
-        navigator.clipboard.writeText(window.location.href);
-        setSnackbarMsg("Meeting link copied to clipboard!");
-        setOpenSnackbar(true);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(window.location.href)
+                .then(() => {
+                    setSnackbarMsg("Meeting link copied to clipboard!");
+                    setOpenSnackbar(true);
+                })
+                .catch(() => {
+                    setSnackbarMsg("Meeting URL: " + window.location.href);
+                    setOpenSnackbar(true);
+                });
+        } else {
+            setSnackbarMsg("Meeting URL: " + window.location.href);
+            setOpenSnackbar(true);
+        }
     };
 
     useEffect(() => {

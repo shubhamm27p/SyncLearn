@@ -145,7 +145,9 @@ const login = async (req, res) => {
 
             try {
                 await supabase.from('users').update({ token }).eq('id', user.id);
-            } catch (err) {}
+            } catch (err) {
+                console.warn("[login] Supabase token persistence warning:", err.message);
+            }
 
             return res.status(200).json({ 
                 token: token, 
@@ -214,18 +216,23 @@ const register = async (req, res) => {
 };
 
 const getUserHistory = async (req, res) => {
-    const token = req.query?.token || req.body?.token;
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query?.token || req.body?.token;
 
-    if (!token) {
+    if (!token && !req.user) {
         return res.status(400).json({ message: "Token is required" });
     }
 
     try {
         const user = req.user;
+        const username = user?.username || req.query?.username;
+        if (!username) {
+            return res.status(400).json({ message: "User context not found" });
+        }
+
         const { data: meetings, error: meetingsError } = await supabase
             .from('meetings')
             .select('id, meeting_id, created_at')
-            .eq('user_id', user.username)
+            .eq('user_id', username)
             .order('created_at', { ascending: false });
         if (meetingsError) throw meetingsError;
 
@@ -236,20 +243,21 @@ const getUserHistory = async (req, res) => {
 };
 
 const addToHistory = async (req, res) => {
-    const { token, meeting_code } = req.body || {};
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.body?.token;
+    const { meeting_code } = req.body || {};
 
-    if (!token || !meeting_code) {
+    if ((!token && !req.user) || !meeting_code) {
         return res.status(400).json({ message: "Token and meeting code are required" });
     }
 
     try {
-        const { data: user, error: userError } = await supabase.from('users').select('*').eq('token', token).single();
-        if (userError || !user) {
+        const username = req.user?.username || req.body?.username;
+        if (!username) {
             return res.status(404).json({ message: "User Not Found" });
         }
 
         const { error } = await supabase.from('meetings').insert([{
-            user_id: user.username,
+            user_id: username,
             meeting_id: meeting_code
         }]);
         if (error) throw error;
@@ -262,14 +270,19 @@ const addToHistory = async (req, res) => {
 };
 
 const clearUserHistory = async (req, res) => {
-    const token = req.query?.token || req.body?.token;
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query?.token || req.body?.token;
 
-    if (!token) {
+    if (!token && !req.user) {
         return res.status(400).json({ message: "Token is required" });
     }
 
     try {
-        const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', req.user.username);
+        const username = req.user?.username;
+        if (!username) {
+            return res.status(400).json({ message: "User context missing" });
+        }
+
+        const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', username);
         if (deleteError) throw deleteError;
 
         return res.status(200).json({ message: "Meeting history cleared successfully" });
@@ -280,17 +293,22 @@ const clearUserHistory = async (req, res) => {
 };
 
 const deleteMeetingFromHistory = async (req, res) => {
-    const token = req.query?.token || req.body?.token;
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.query?.token || req.body?.token;
     const { id } = req.params;
 
-    if (!token || !id) {
+    if ((!token && !req.user) || !id) {
         return res.status(400).json({ message: "Token and meeting ID are required" });
     }
 
     try {
+        const username = req.user?.username;
+        if (!username) {
+            return res.status(400).json({ message: "User context missing" });
+        }
+
         const { error } = await supabase.from('meetings')
             .delete()
-            .eq('user_id', req.user.username)
+            .eq('user_id', username)
             .or(`id.eq.${id},meeting_id.eq.${id}`);
 
         if (error) throw error;
@@ -450,6 +468,10 @@ const createQuiz = async (req, res) => {
 
     if (!meetingId || !question || !options || !Array.isArray(options) || options.length === 0 || correctOptionIndex === undefined || correctOptionIndex === null) {
         return res.status(400).json({ message: "Please provide meetingId, question, options array, and correctOptionIndex." });
+    }
+
+    if (Number(correctOptionIndex) < 0 || Number(correctOptionIndex) >= options.length) {
+        return res.status(400).json({ message: "correctOptionIndex is out of bounds for the provided options array." });
     }
 
     try {
