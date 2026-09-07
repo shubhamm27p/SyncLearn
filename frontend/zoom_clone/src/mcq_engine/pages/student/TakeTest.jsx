@@ -367,12 +367,34 @@ const TakeTest = () => {
   useEffect(() => {
     const fetchTest = async () => {
       try {
-        const res = await API.get(`/student/tests/${id}/start`);
-        const testObj = res.data.data || res.data;
-        setTestData(testObj);
+        if (id && id.startsWith('test_local_')) {
+          const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+          const localTest = localTests.find(t => t._id === id || t.id === id);
+          if (localTest) {
+            setTestData(localTest);
+          } else {
+            throw new Error("Local test not found");
+          }
+        } else {
+          const res = await API.get(`/student/tests/${id}/start`);
+          const testObj = res.data.data || res.data;
+          setTestData(testObj);
+        }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load test');
-        toast.error(err.response?.data?.message || 'Cannot start this test');
+        console.warn("Error fetching test, falling back to local storage:", err);
+        try {
+          const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+          const localTest = localTests.find(t => t._id === id || t.id === id);
+          if (localTest) {
+            setTestData(localTest);
+          } else {
+            setError(err.response?.data?.message || 'Failed to load test');
+            toast.error(err.response?.data?.message || 'Cannot start this test');
+          }
+        } catch (e) {
+          setError(err.response?.data?.message || 'Failed to load test');
+          toast.error(err.response?.data?.message || 'Cannot start this test');
+        }
       } finally { setLoading(false); }
     };
     fetchTest();

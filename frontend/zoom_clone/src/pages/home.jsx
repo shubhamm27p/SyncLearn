@@ -330,7 +330,7 @@ function HomeComponent() {
                                 boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
                             }}
                         >
-                            New Meeting
+                            Create Meeting
                         </Button>
 
                         {/* Meeting Code Input Group */}

@@ -479,6 +479,23 @@ export const connectToSocket = (server) => {
             }
         });
 
+        socket.on("end-meeting", () => {
+            const userRoom = socketUserMap[socket.id]?.room;
+            if (userRoom && isRoomHost(socket, userRoom)) {
+                if (connections[userRoom]) {
+                    connections[userRoom].forEach((elem) => {
+                        io.to(elem).emit("meeting-ended", { reason: "The host has ended the meeting." });
+                    });
+                    if (activeQuizzes[userRoom]) {
+                        flushQuizSubmissionsToDB(userRoom, activeQuizzes[userRoom]);
+                        delete activeQuizzes[userRoom];
+                    }
+                    delete connections[userRoom];
+                    delete meetingHosts[userRoom];
+                }
+            }
+        });
+
         socket.on("disconnect", () => {
             const userRoom = socketUserMap[socket.id]?.room;
             const wasActiveHost = meetingHosts[userRoom]?.activeHostId === socket.id;
@@ -503,11 +520,16 @@ export const connectToSocket = (server) => {
                     delete connections[userRoom];
                     delete meetingHosts[userRoom];
                 } else if (wasActiveHost) {
-                    meetingHosts[userRoom].activeHostId = null;
-                    connections[userRoom].forEach((sId) => {
-                        if (socketUserMap[sId]) socketUserMap[sId].role = "student";
+                    connections[userRoom].forEach((elem) => {
+                        io.to(elem).emit("meeting-ended", { reason: "The host has left, ending the meeting for everyone." });
                     });
-                    broadcastRoomState(io, userRoom);
+                    
+                    if (activeQuizzes[userRoom]) {
+                        flushQuizSubmissionsToDB(userRoom, activeQuizzes[userRoom]);
+                        delete activeQuizzes[userRoom];
+                    }
+                    delete connections[userRoom];
+                    delete meetingHosts[userRoom];
                 }
             }
         });

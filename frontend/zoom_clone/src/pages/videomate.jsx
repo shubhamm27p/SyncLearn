@@ -625,6 +625,23 @@ export default function VideoMeetComponent() {
                 routeTo("/home");
             });
 
+            // Listener for meeting ended by Host
+            socketRef.current.on("meeting-ended", ({ reason }) => {
+                alert(reason || "The host has ended the meeting.");
+                try {
+                    if (window.localStream) {
+                        window.localStream.getTracks().forEach(track => track.stop());
+                    }
+                    for (let id in connectionsRef.current) {
+                        connectionsRef.current[id].close();
+                    }
+                    if (socketRef.current) {
+                        socketRef.current.disconnect();
+                    }
+                } catch (e) {}
+                routeTo("/home");
+            });
+
             // Camera permission request listener for Student
             socketRef.current.on("camera-permission-request", ({ hostId, hostName }) => {
                 setCameraReqHostId(hostId);
@@ -945,6 +962,12 @@ export default function VideoMeetComponent() {
             clearTimeout(autoLeaveTimerRef.current);
             autoLeaveTimerRef.current = null;
         }
+
+        if (socketRef.current && socketIdRef.current === activeHostId) {
+            socketRef.current.emit("end-meeting");
+            // The disconnect cleanup will happen below.
+        }
+
         try {
             if (window.localStream) {
                 window.localStream.getTracks().forEach(track => track.stop());
@@ -1886,6 +1909,17 @@ export default function VideoMeetComponent() {
                                                     <VideoCameraFrontIcon fontSize="small" />
                                                 </IconButton>
                                             </Tooltip>
+                                            {socketIdRef.current === activeHostId && (
+                                                <Tooltip title="Remove Participant">
+                                                    <IconButton 
+                                                        size="small" 
+                                                        onClick={() => handleRemoveParticipant(v.socketId, participantName)}
+                                                        style={{ color: '#ef4444' }}
+                                                    >
+                                                        <PersonRemoveIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
                                         </div>
                                     )}
 
