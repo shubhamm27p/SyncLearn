@@ -560,6 +560,14 @@ export default function VideoMeetComponent() {
             console.error("Socket connection failed:", error.message);
             setSnackbarMsg(error.message || "Unable to connect to the meeting server. Retrying...");
             setOpenSnackbar(true);
+
+            if (error.message?.includes("Invalid or inactive token") || error.message?.includes("No token provided")) {
+                socketRef.current.disconnect();
+                localStorage.removeItem("token");
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("userRole");
+                setTimeout(() => navigate("/authentication"), 1200);
+            }
         });
 
         socketRef.current.on('signal', gotMessageFromServer);

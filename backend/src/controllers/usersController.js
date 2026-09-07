@@ -135,7 +135,7 @@ const login = async (req, res) => {
             return res.status(404).json({ message: "User Not Found!" });
         }
 
-        if (user.role !== 'admin' && user.role !== 'trainer' && siteOnline === false) {
+        if (user.role !== 'admin' && siteOnline === false) {
             return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
 
@@ -143,10 +143,18 @@ const login = async (req, res) => {
         if (isMatch) {
             let token = crypto.randomBytes(20).toString("hex");
 
-            try {
-                await supabase.from('users').update({ token }).eq('id', user.id);
-            } catch (err) {
-                console.warn("[login] Supabase token persistence warning:", err.message);
+            const { data: updatedUser, error: tokenUpdateError } = await supabase
+                .from('users')
+                .update({ token })
+                .eq('id', user.id)
+                .select('id')
+                .maybeSingle();
+
+            if (tokenUpdateError || !updatedUser) {
+                console.error("[login] Failed to persist session token:", tokenUpdateError?.message || "User row was not updated");
+                return res.status(503).json({
+                    message: "Unable to start a secure session. Please try again later."
+                });
             }
 
             return res.status(200).json({ 
@@ -845,4 +853,4 @@ export {
     getMediaPermissions,
     updateMediaPermission,
     generateRtcTokenController
-};
+};
