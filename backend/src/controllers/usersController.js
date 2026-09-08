@@ -159,12 +159,13 @@ const login = async (req, res) => {
             );
 
             if (tokenUpdateError || !updatedUser) {
-                console.error("[login] Failed to persist session token:", tokenUpdateError?.message || "User row was not updated");
+                console.error("[login] Failed to persist session token:", tokenUpdateError?.message || "User row was not updated. Check if RLS is enabled without policies.");
                 return res.status(503).json({
                     message: "Unable to start a secure session. Please try again later."
                 });
             }
 
+            console.log("[login] Token updated in DB successfully. Returning to frontend.");
             return res.status(200).json({ 
                 token: token, 
                 message: "Logged in successfully",

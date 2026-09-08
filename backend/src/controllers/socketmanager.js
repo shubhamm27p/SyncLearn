@@ -112,6 +112,14 @@ export const connectToSocket = (server) => {
                 .eq('token', token)
                 .maybeSingle();
 
+            if (error) {
+                console.error('[Socket Auth DB Error]', error);
+            }
+
+            if (!user) {
+                console.warn('[Socket Auth] No user found matching token:', token.substring(0, 10) + '...');
+            }
+
             if (user && user.is_active !== false) {
                 socket.authUser = user;
                 return next();
