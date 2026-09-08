@@ -10,6 +10,20 @@ const client = axios.create({
     baseURL: `${serverUrl}/api/v1/users`
 });
 
+// Add request interceptor to inject the token from localStorage
+client.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export const AuthProvider = ({children}) => {
     const authContext = useContext(AuthContext);
     const [userData, setUserData] = useState(authContext);

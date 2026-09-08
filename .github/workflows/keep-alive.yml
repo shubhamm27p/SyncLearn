@@ -1,0 +1,16 @@
+name: Keep Render Backend Alive
+
+on:
+  schedule:
+    # Runs every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual triggering from the GitHub Actions tab
+
+jobs:
+  ping-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend API
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" https://synclearn-backend.onrender.com/api/v1/users/active-rooms
+          echo "Ping executed!"
