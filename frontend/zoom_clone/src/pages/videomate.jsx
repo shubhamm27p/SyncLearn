@@ -567,7 +567,7 @@ export default function VideoMeetComponent() {
                 localStorage.removeItem("token");
                 localStorage.removeItem("currentUser");
                 localStorage.removeItem("userRole");
-                setTimeout(() => navigate("/authentication"), 1200);
+                setTimeout(() => routeTo("/authentication"), 1200);
             }
         });
 

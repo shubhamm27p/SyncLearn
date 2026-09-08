@@ -32,6 +32,8 @@ function HomeComponent() {
     const [meetingCodeError, setMeetingCodeError] = useState("");
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
+    
+    const { addToUserHistory } = useContext(AuthContext);
 
     const getActiveUser = () => {
         try {
