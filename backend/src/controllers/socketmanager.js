@@ -108,7 +108,7 @@ export const connectToSocket = (server) => {
         try {
             const { data: user, error } = await supabase
                 .from('users')
-                .select('id, name, username, role, is_active, email, profile_pic')
+                .select('id, name, username, role, is_active, email')
                 .eq('token', token)
                 .maybeSingle();
 
@@ -166,7 +166,7 @@ export const connectToSocket = (server) => {
                 role: socket.id === meetingHosts[path].activeHostId ? role : role,
                 room: path,
                 userId: socket.authUser?.id || null,
-                profilePic: socket.authUser?.profile_pic || null,
+                profilePic: null,
                 mediaState: userMetaData.mediaState || { video: true, audio: true }
             };
 
