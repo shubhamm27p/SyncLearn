@@ -1237,6 +1237,108 @@ export default function VideoMeetComponent() {
 
     const isTrainerOrAdmin = userRole === 'trainer' || userRole === 'admin' || isHost;
     const otherParticipants = roomParticipants.filter(p => p.socketId !== socketIdRef.current);
+        const isLocalVideoMainStage = videos.length === 0 || screen === true;
+
+    const LocalVideoContent = (
+        <>
+            {video ? (
+                <video
+                    ref={(ref) => {
+                        localVideoRef.current = ref;
+                        if (ref && window.localStream) {
+                            if (ref.srcObject !== window.localStream) {
+                                ref.srcObject = window.localStream;
+                            }
+                            ref.play().catch((err) => console.log('Local video play error:', err));
+                        }
+                    }}
+                    autoPlay
+                    muted
+                    playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+                ></video>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)' }}>
+                    <Avatar 
+                        src={userData?.profilePic || ''} 
+                        sx={{ 
+                            width: isLocalVideoMainStage ? 120 : 44, 
+                            height: isLocalVideoMainStage ? 120 : 44, 
+                            bgcolor: 'rgba(255,255,255,0.1)', 
+                            border: '2px solid rgba(255,255,255,0.25)'
+                        }}
+                    >
+                        <PersonIcon sx={{ fontSize: isLocalVideoMainStage ? 80 : 30, color: '#94a3b8' }} />
+                    </Avatar>
+                </div>
+            )}
+
+            {/* Self Frame Status Icons */}
+            <div style={{
+                position: 'absolute',
+                top: isLocalVideoMainStage ? '10px' : '6px',
+                right: isLocalVideoMainStage ? '10px' : '6px',
+                display: 'flex',
+                gap: '4px',
+                zIndex: 5
+            }}>
+                {!video && (
+                    <Tooltip title='Camera Off'>
+                        <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.9)', borderRadius: '50%', p: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <VideocamOffIcon sx={{ fontSize: 13, color: '#ffffff' }} />
+                        </Box>
+                    </Tooltip>
+                )}
+                {!audio ? (
+                    <Tooltip title='Microphone Muted'>
+                        <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.9)', borderRadius: '50%', p: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <MicOffIcon sx={{ fontSize: 13, color: '#ffffff' }} />
+                        </Box>
+                    </Tooltip>
+                ) : (
+                    <Tooltip title='Microphone Active'>
+                        <Box sx={{ bgcolor: 'rgba(16, 185, 129, 0.9)', borderRadius: '50%', p: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <MicIcon sx={{ fontSize: 13, color: '#ffffff' }} />
+                        </Box>
+                    </Tooltip>
+                )}
+            </div>
+
+            {/* Fullscreen Button for Self */}
+            <div style={{
+                position: 'absolute',
+                bottom: isLocalVideoMainStage ? '10px' : '4px',
+                right: isLocalVideoMainStage ? '10px' : '6px',
+                zIndex: 5
+            }}>
+                <Tooltip title='Full Screen'>
+                    <IconButton size='small' onClick={() => handleFullscreen('video-wrapper-self')} sx={{ color: '#ffffff', bgcolor: 'rgba(0,0,0,0.5)', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}>
+                        <FullscreenIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
+            </div>
+
+            {/* Self Name Banner */}
+            <div style={{
+                position: 'absolute',
+                bottom: isLocalVideoMainStage ? '10px' : '4px',
+                left: isLocalVideoMainStage ? '10px' : '6px',
+                background: 'rgba(0, 0, 0, 0.75)',
+                backdropFilter: 'blur(4px)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                pointerEvents: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+            }}>
+                <Typography variant='caption' sx={{ color: '#ffffff', fontWeight: 'bold' }}>
+                    You ({username || 'Self'})
+                </Typography>
+            </div>
+        </>
+    );
+
     const totalParticipantsCount = Math.max(1 + otherParticipants.length, videos.length + 1);
 
     return (
@@ -1801,132 +1903,41 @@ export default function VideoMeetComponent() {
                     </div>
 
                     {/* Movable & Scaled Down Self Video Card */}
-                    <div
-                        id="video-wrapper-self"
-                        onMouseDown={handleSelfVideoMouseDown}
-                        onTouchStart={handleSelfVideoTouchStart}
-                        style={{
-                            position: "absolute",
-                            left: `${selfVideoPos.x}px`,
-                            top: `${selfVideoPos.y}px`,
-                            width: "165px",
-                            height: "105px",
-                            zIndex: 25,
-                            cursor: isDraggingSelfVideo ? "grabbing" : "grab",
-                            userSelect: "none",
-                            borderRadius: "12px",
-                            overflow: "hidden",
-                            border: "2px solid #0e71eb",
-                            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.6)",
-                            background: "#18181b",
-                            transition: isDraggingSelfVideo ? "none" : "box-shadow 0.2s ease",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center"
-                        }}
-                    >
-                        {video ? (
-                            <video
-                                ref={(ref) => {
-                                    localVideoRef.current = ref;
-                                    if (ref && window.localStream) {
-                                        if (ref.srcObject !== window.localStream) {
-                                            ref.srcObject = window.localStream;
-                                        }
-                                        ref.play().catch((err) => console.log("Local video play error:", err));
-                                    }
-                                }}
-                                autoPlay
-                                muted
-                                playsInline
-                                style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
-                            ></video>
-                        ) : (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
-                                <Avatar 
-                                    src={userData?.profilePic || ""} 
-                                    sx={{ 
-                                        width: 44, 
-                                        height: 44, 
-                                        bgcolor: "#0e71eb", 
-                                        fontSize: "1.1rem", 
-                                        fontWeight: "bold",
-                                        border: "2px solid rgba(255,255,255,0.25)"
-                                    }}
-                                >
-                                    {(username || "Self")[0]?.toUpperCase()}
-                                </Avatar>
+                    {!isLocalVideoMainStage && (
+                        <div
+                            id="video-wrapper-self"
+                            onMouseDown={handleSelfVideoMouseDown}
+                            onTouchStart={handleSelfVideoTouchStart}
+                            style={{
+                                position: 'absolute',
+                                left: `${selfVideoPos.x}px`,
+                                top: `${selfVideoPos.y}px`,
+                                width: '165px',
+                                height: '105px',
+                                zIndex: 25,
+                                cursor: isDraggingSelfVideo ? 'grabbing' : 'grab',
+                                userSelect: 'none',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                border: '2px solid #0e71eb',
+                                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6)',
+                                background: '#18181b',
+                                transition: isDraggingSelfVideo ? 'none' : 'box-shadow 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            {LocalVideoContent}
+                        </div>
+                    )}
+
+                    <div className={`${styles.conferenceView} ${showModal ? styles.conferenceViewShifted : ''}`}>
+                        {isLocalVideoMainStage && (
+                            <div id="video-wrapper-self" className={styles.videoWrapper} style={{ position: 'relative', background: '#18181b', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flex: screen ? '1 1 100%' : '1 1 320px', maxHeight: screen ? 'calc(100vh - 120px)' : 'none' }}>
+                                {LocalVideoContent}
                             </div>
                         )}
-
-                        {/* Self Frame Status Icons */}
-                        <div style={{
-                            position: "absolute",
-                            top: "6px",
-                            right: "6px",
-                            display: "flex",
-                            gap: "4px",
-                            zIndex: 5
-                        }}>
-                            {!video && (
-                                <Tooltip title="Camera Off">
-                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <VideocamOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
-                                    </Box>
-                                </Tooltip>
-                            )}
-                            {!audio ? (
-                                <Tooltip title="Microphone Muted">
-                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <MicOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
-                                    </Box>
-                                </Tooltip>
-                            ) : (
-                                <Tooltip title="Microphone Active">
-                                    <Box sx={{ bgcolor: "rgba(16, 185, 129, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <MicIcon sx={{ fontSize: 13, color: "#ffffff" }} />
-                                    </Box>
-                                </Tooltip>
-                            )}
-                        </div>
-
-                        {/* Fullscreen Button for Self */}
-                        <div style={{
-                            position: "absolute",
-                            bottom: "4px",
-                            right: "6px",
-                            zIndex: 5
-                        }}>
-                            <Tooltip title="Full Screen">
-                                <IconButton size="small" onClick={() => handleFullscreen("video-wrapper-self")} sx={{ color: "#ffffff", bgcolor: "rgba(0,0,0,0.5)", "&:hover": { bgcolor: "rgba(0,0,0,0.7)" } }}>
-                                    <FullscreenIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                        </div>
-
-                        {/* Self Name Banner */}
-                        <div style={{
-                            position: "absolute",
-                            bottom: "4px",
-                            left: "6px",
-                            background: "rgba(0, 0, 0, 0.75)",
-                            backdropFilter: "blur(4px)",
-                            padding: "2px 6px",
-                            borderRadius: "4px",
-                            color: "#ffffff",
-                            fontSize: "0.68rem",
-                            fontWeight: "bold",
-                            pointerEvents: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px"
-                        }}>
-                            <span>You ({username || "Self"})</span>
-                        </div>
-                    </div>
-
-                    {/* Conference View / Trainer Presentation View */}
-                    <div className={`${styles.conferenceView} ${showModal ? styles.conferenceViewShifted : ''}`}>
                         {videos.map((v) => {
                             const participant = roomParticipants.find(p => p.socketId === v.socketId);
                             const participantName = participant?.username || `User_${v.socketId.substring(0, 4)}`;
@@ -1980,18 +1991,15 @@ export default function VideoMeetComponent() {
                                     ) : (
                                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", width: "100%", height: "100%" }}>
                                             <Avatar 
-                                                src={participant?.profilePic || ""} 
+                                                src={participant?.profilePic || ''} 
                                                 sx={{ 
-                                                    width: 72, 
-                                                    height: 72, 
-                                                    bgcolor: "#0e71eb", 
-                                                    fontSize: "1.8rem", 
-                                                    fontWeight: "bold",
-                                                    border: "3px solid rgba(255,255,255,0.15)",
-                                                    boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+                                                    width: 120, 
+                                                    height: 120, 
+                                                    bgcolor: 'rgba(255,255,255,0.1)', 
+                                                    border: '2px solid rgba(255,255,255,0.25)'
                                                 }}
                                             >
-                                                {participantName[0]?.toUpperCase()}
+                                                <PersonIcon sx={{ fontSize: 80, color: '#94a3b8' }} />
                                             </Avatar>
                                             <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem' }}>
                                                 {participantName} (Camera Off)
