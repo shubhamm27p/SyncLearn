@@ -5,8 +5,12 @@ import helmet from "helmet";
 import { connectToSocket } from "./controllers/socketmanager.js";
 import userRouter from "./routes/usersRouter.js";
 import { supabase } from "./utils/supabase.js";
+import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcrypt";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import { authMiddleware } from "./middlewares/authMiddleware.js";
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables from .env if present
 try {
@@ -33,6 +37,46 @@ process.on('unhandledRejection', (err) => {
 
 const app = express();
 const server = createServer(app);
+
+const ensureAdminAccount = async () => {
+    const adminUsername = process.env.ADMIN_USERNAME || 'synclearn_admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'SyncAdmin@2026!';
+
+    try {
+        const { data: existing, error: lookupError } = await supabase
+            .from('users')
+            .select('id, role')
+            .or(`username.eq.${adminUsername},email.eq.${adminUsername}`)
+            .maybeSingle();
+
+        if (lookupError) {
+            console.warn("Admin lookup warning:", lookupError.message);
+        }
+
+        if (existing) {
+            console.log(`Admin account confirmed in database: ${adminUsername} (${existing.role})`);
+            return;
+        }
+
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        const { error: insertError } = await supabase.from('users').insert([{
+            name: process.env.ADMIN_NAME || 'System Admin',
+            username: adminUsername,
+            email: process.env.ADMIN_EMAIL || `${adminUsername}@synclearn.edu`,
+            password: hashedPassword,
+            role: 'admin',
+            is_active: true
+        }]);
+
+        if (insertError) {
+            console.warn("Admin account auto-insert warning:", insertError.message);
+        } else {
+            console.log(`Admin account created successfully: ${adminUsername}`);
+        }
+    } catch (err) {
+        console.error("Admin bootstrap error:", err.message);
+    }
+};
 
 const io = connectToSocket(server);
 
@@ -62,6 +106,25 @@ app.use(cors({
     credentials: true
 }));
 
+// API Gateway to MCQ Backend
+app.use(
+    "/api/mcq",
+    authMiddleware,
+    (req, res, next) => {
+        // Inject Supabase user info securely into headers
+        req.headers['x-auth-user'] = JSON.stringify(req.user);
+        req.headers['x-gateway-secret'] = process.env.GATEWAY_SECRET || "super_secret_gateway_key_2026";
+        next();
+    },
+    createProxyMiddleware({
+        target: process.env.MCQ_BACKEND_URL || 'http://localhost:5000',
+        changeOrigin: true,
+        pathRewrite: {
+            '^/api/mcq': '/api',
+        }
+    })
+);
+
 app.use(express.json({limit: "49kb"}));
 app.use(express.urlencoded({limit: "40kb", extended: true}));
 
@@ -84,6 +147,7 @@ if (process.env.NODE_ENV !== 'test') {
             const { data, error } = await supabase.from('users').select('id').limit(1);
             if (error) throw error;
             console.log("Supabase connection established successfully.");
+            await ensureAdminAccount();
         } catch (err) {
             console.error("Supabase Connection Error:", err.message);
         }

@@ -4,6 +4,7 @@ import API from '../../services/api';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
 import ConfirmModal from '../../components/ConfirmModal';
+import SendTestModal from '../../components/SendTestModal';
 import {
   HiOutlinePencilSquare,
   HiOutlineTrash,
@@ -13,6 +14,7 @@ import {
   HiOutlinePlus,
   HiOutlineMagnifyingGlass,
   HiOutlineCodeBracketSquare,
+  HiOutlinePaperAirplane,
 } from 'react-icons/hi2';
 
 const ManageTests = () => {
@@ -21,6 +23,7 @@ const ManageTests = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, title: '' });
+  const [sendModal, setSendModal] = useState({ open: false, test: null });
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
@@ -34,7 +37,9 @@ const ManageTests = () => {
         setTests(res.data.data);
       }
     } catch (err) {
-      toast.error('Failed to load tests');
+      console.warn("ManageTests API unavailable, loading local database:", err);
+      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+      setTests(localTests);
     } finally {
       setLoading(false);
     }
@@ -42,6 +47,9 @@ const ManageTests = () => {
 
   const openDeleteModal = (id, title) => setDeleteModal({ open: true, id, title });
   const closeDeleteModal = () => setDeleteModal({ open: false, id: null, title: '' });
+
+  const openSendModal = (test) => setSendModal({ open: true, test });
+  const closeSendModal = () => setSendModal({ open: false, test: null });
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -252,6 +260,11 @@ const ManageTests = () => {
                       </td>
                       <td style={{ padding: '16px 20px', fontSize: '14px', color: 'var(--text-primary)', textAlign: 'right' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                          <button onClick={() => openSendModal(test)} title="Send Test to Students"
+                            style={{ background: 'rgba(14,113,235,0.15)', border: '1px solid rgba(14,113,235,0.3)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: '#0e71eb', display: 'flex' }}
+                          >
+                            <HiOutlinePaperAirplane size={16} />
+                          </button>
                           <Link to={`/admin/tests/${test._id}/edit`} title="Edit"
                             style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
                           >
@@ -302,6 +315,12 @@ const ManageTests = () => {
         confirmText="Delete Test"
         variant="danger"
         loading={deleting}
+      />
+
+      <SendTestModal
+        isOpen={sendModal.open}
+        onClose={closeSendModal}
+        test={sendModal.test}
       />
     </div>
   );

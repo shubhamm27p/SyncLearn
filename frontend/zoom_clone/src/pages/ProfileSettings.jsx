@@ -22,7 +22,9 @@ import {
   Alert,
   LinearProgress,
   Divider,
-  CircularProgress
+  CircularProgress,
+  IconButton,
+  InputAdornment
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import SecurityIcon from "@mui/icons-material/Security";
@@ -34,6 +36,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
 
@@ -74,7 +78,7 @@ const inputSx = {
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
-  const { currentUser, userRole } = useContext(AuthContext);
+  const { currentUser, userRole, setCurrentUser } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState(0); // 0: Profile, 1: Security, 2: Preferences
   
@@ -84,11 +88,21 @@ export default function ProfileSettings() {
   const [profileErrors, setProfileErrors] = useState({});
   const [passwordErrors, setPasswordErrors] = useState({});
 
+  const getDerivedEmail = (user) => {
+    if (user?.email) return user.email;
+    if (user?.username && user.username.includes("@")) return user.username;
+    if (user?.username) return `${user.username}@synclearn.edu`;
+    return "";
+  };
+
+  const activeUser = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+  const isAdmin = sessionStorage.getItem("admin_authenticated") === "true" || activeUser?.role === "admin" || activeUser?.role === "trainer" || userRole === "trainer" || userRole === "admin";
+
   // General Profile State
-  const [fullName, setFullName] = useState(currentUser?.name || "Alex Morgan");
-  const [username, setUsername] = useState(currentUser?.username || "alex_morgan");
-  const [email, setEmail] = useState(currentUser?.email || "alex.morgan@synclearn.edu");
-  const [bio, setBio] = useState("Lead Trainer & Computer Science Educator");
+  const [fullName, setFullName] = useState(activeUser?.name || "");
+  const [username, setUsername] = useState(activeUser?.username || "");
+  const [email, setEmail] = useState(getDerivedEmail(activeUser));
+  const [bio, setBio] = useState("");
   const [organization, setOrganization] = useState("SyncLearn Learning Institute");
   const [avatarUrl, setAvatarUrl] = useState("");
 
@@ -102,6 +116,11 @@ export default function ProfileSettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [emailVerified] = useState(true);
+
+  // Password Visibility States
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // System Preferences State
   const [notifySubmissions, setNotifySubmissions] = useState(true);
@@ -119,19 +138,23 @@ export default function ProfileSettings() {
 
   // Load from localStorage
   useEffect(() => {
-    const savedProfile = JSON.parse(localStorage.getItem("viora_user_profile_db") || "null");
+    const user = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+    if (user) {
+      const userKey = user.username || user.email || "default";
+      const savedProfile = JSON.parse(localStorage.getItem(`viora_user_profile_${userKey}`) || "null");
+      const derivedEmail = getDerivedEmail(user);
+
+      setFullName(savedProfile?.fullName || user.name || "");
+      setUsername(savedProfile?.username || user.username || "");
+      setEmail(savedProfile?.email || derivedEmail);
+      setBio(savedProfile?.bio || "");
+      setOrganization(savedProfile?.organization || "SyncLearn Learning Institute");
+      setAvatarUrl(savedProfile?.avatarUrl || "");
+    }
+
     const savedPrefs = JSON.parse(localStorage.getItem("viora_user_settings_db") || "null");
     const savedTests = JSON.parse(localStorage.getItem("viora_tests_db") || "[]");
     const savedSubmissions = JSON.parse(localStorage.getItem("viora_test_submissions_db") || "[]");
-
-    if (savedProfile) {
-      setFullName(savedProfile.fullName || fullName);
-      setUsername(savedProfile.username || username);
-      setEmail(savedProfile.email || email);
-      setBio(savedProfile.bio || bio);
-      setOrganization(savedProfile.organization || organization);
-      setAvatarUrl(savedProfile.avatarUrl || "");
-    }
 
     if (savedPrefs) {
       setNotifySubmissions(savedPrefs.notifySubmissions ?? true);
@@ -144,7 +167,7 @@ export default function ProfileSettings() {
 
     setTotalTestsCreated(savedTests.length);
     setTotalTestsTaken(savedSubmissions.length);
-  }, []);
+  }, [currentUser]);
 
   const handleSaveProfile = async () => {
     setProfileErrors({});
@@ -161,8 +184,7 @@ export default function ProfileSettings() {
     }
 
     setIsSavingProfile(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     const profileData = {
       fullName,
@@ -173,7 +195,23 @@ export default function ProfileSettings() {
       avatarUrl
     };
 
-    localStorage.setItem("viora_user_profile_db", JSON.stringify(profileData));
+    const user = currentUser || JSON.parse(localStorage.getItem("currentUser") || "null");
+    const userKey = user?.username || user?.email || "default";
+    localStorage.setItem(`viora_user_profile_${userKey}`, JSON.stringify(profileData));
+
+    if (user) {
+      const updatedUser = {
+        ...user,
+        name: fullName,
+        username: username,
+        email: email
+      };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      if (setCurrentUser) {
+        setCurrentUser(updatedUser);
+      }
+    }
+
     toast.success("Profile details saved successfully!");
     setIsSavingProfile(false);
   };
@@ -265,7 +303,7 @@ export default function ProfileSettings() {
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fa", color: "#101828", py: 4 }}>
       <Container maxWidth="lg">
         {/* Navigation & Header Bar */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4, pb: 2, borderBottom: "1px solid #eaecf0" }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4, pb: 2, borderBottom: "1px solid #eaecf0", flexWrap: "wrap", gap: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, cursor: "pointer" }} onClick={() => navigate("/home")}>
             <VideoCallIcon sx={{ fontSize: 32, color: "#0e71eb" }} />
             <Typography variant="h6" sx={{ fontWeight: 700, color: "#101828", fontSize: "20px", letterSpacing: "-0.4px" }}>
@@ -273,14 +311,29 @@ export default function ProfileSettings() {
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
+            {isAdmin ? (
+              <Button
+                onClick={() => navigate("/admin/tests")}
+                sx={{ color: "#eab308", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+              >
+                Admin Panel
+              </Button>
+            ) : (
+              <Button
+                onClick={() => navigate("/student/dashboard")}
+                sx={{ color: "#0e71eb", fontWeight: 600, fontSize: "14px", textTransform: "none", display: { xs: "none", sm: "inline-flex" } }}
+              >
+                Student Portal
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<HomeIcon />}
               onClick={() => navigate("/home")}
               sx={{ color: "#344054", borderColor: "#d1d5db", bgcolor: "#ffffff", "&:hover": { borderColor: "#0e71eb", bgcolor: "#f9fafb" }, textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
             >
-              Back to Dashboard
+              Dashboard
             </Button>
             <Button
               variant="outlined"
@@ -288,9 +341,10 @@ export default function ProfileSettings() {
               startIcon={<LogoutIcon />}
               onClick={() => {
                 localStorage.removeItem("token");
+                sessionStorage.removeItem("admin_authenticated");
                 navigate("/auth");
               }}
-              sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
+              sx={{ color: "#ef4444", borderColor: "#fca5a5", textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
             >
               Logout
             </Button>
@@ -501,26 +555,44 @@ export default function ProfileSettings() {
                     <Typography component="label" sx={labelSx}>Current Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showCurrentPassword ? "text" : "password"}
                       fullWidth
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.currentPassword}
                       helperText={passwordErrors.currentPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowCurrentPassword(!showCurrentPassword)} edge="end">
+                              {showCurrentPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Typography component="label" sx={labelSx}>New Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showNewPassword ? "text" : "password"}
                       fullWidth
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.newPassword}
                       helperText={passwordErrors.newPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowNewPassword(!showNewPassword)} edge="end">
+                              {showNewPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                     {newPassword && (
                       <Box sx={{ mt: 1 }}>
@@ -542,13 +614,22 @@ export default function ProfileSettings() {
                     <Typography component="label" sx={labelSx}>Confirm New Password</Typography>
                     <TextField
                       hiddenLabel
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       fullWidth
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       sx={inputSx}
                       error={!!passwordErrors.confirmPassword}
                       helperText={passwordErrors.confirmPassword}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                              {showConfirmPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                            </IconButton>
+                          </InputAdornment>
+                        )
+                      }}
                     />
                   </Grid>
                 </Grid>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Box, Paper, TextField, Button, Typography, InputAdornment, IconButton, Alert } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
@@ -6,16 +6,11 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import ShieldIcon from '@mui/icons-material/Shield';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-
-// ─── HARDCODED ADMIN CREDENTIALS ───────────────────────────────────────────
-const ADMIN_CREDENTIALS = {
-  username: 'synclearn_admin',
-  password: 'SyncAdmin@2026!',
-};
-// ───────────────────────────────────────────────────────────────────────────
+import { AuthContext } from '../contents/AuthContents.jsx';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const { handleLogin: authLogin } = useContext(AuthContext);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -37,15 +32,19 @@ export default function AdminLogin() {
     }
 
     setIsLoading(true);
-    // Simulate slight network delay for security feel
-    await new Promise((r) => setTimeout(r, 900));
-
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+    try {
+      const message = await authLogin(username, password);
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      if (!['admin', 'trainer'].includes(currentUser?.role)) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+        throw new Error('This account does not have administrator access.');
+      }
       sessionStorage.setItem('admin_authenticated', 'true');
       sessionStorage.setItem('admin_login_time', Date.now().toString());
-      toast.success('Welcome back, Administrator!');
+      toast.success(message || 'Welcome back, Administrator!');
       navigate('/admin');
-    } else {
+    } catch (loginError) {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
       if (newAttempts >= 5) {
@@ -57,7 +56,7 @@ export default function AdminLogin() {
         }, 30000);
         setError('Too many failed attempts. Access locked for 30 seconds.');
       } else {
-        setError(`Invalid credentials. ${5 - newAttempts} attempt(s) remaining.`);
+        setError(loginError.response?.data?.message || loginError.message || `Invalid credentials. ${5 - newAttempts} attempt(s) remaining.`);
       }
     }
     setIsLoading(false);

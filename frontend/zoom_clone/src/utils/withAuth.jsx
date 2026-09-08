@@ -1,22 +1,29 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const withAuth = (WrappedComponent) => {
     const AuthComponent = (props) => {
-        const router = useNavigate();
-
-        const isAuthenticated = () => {
-            if (localStorage.getItem("token")) {
-                return true;
-            }
-            return false;
-        };
+        const navigate = useNavigate();
+        const location = useLocation();
+        const [isReady, setIsReady] = useState(false);
 
         useEffect(() => {
-            if (!isAuthenticated()) {
-                router("/auth");
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
+            const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
+
+            const hasAuth = Boolean((token && storedUser) || isAdmin);
+
+            if (!hasAuth) {
+                navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
+                return;
             }
-        }, [router]);
+            setIsReady(true);
+        }, [location]);
+
+        if (!isReady) {
+            return null;
+        }
 
         return <WrappedComponent {...props} />;
     };

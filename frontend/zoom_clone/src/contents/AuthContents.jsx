@@ -24,14 +24,23 @@ client.interceptors.request.use(
     }
 );
 
+
 export const AuthProvider = ({children}) => {
     const authContext = useContext(AuthContext);
     const [userData, setUserData] = useState(authContext);
     
     const router = useNavigate();
 
+    const getInitialUser = () => {
+        try {
+            const val = localStorage.getItem("currentUser");
+            return val && val !== "undefined" && val !== "null" ? JSON.parse(val) : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const [currentUser, setCurrentUser] = useState(getInitialUser());
     const [userRole, setUserRole] = useState(localStorage.getItem("userRole") || "student");
-    const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem("currentUser") || "null"));
 
     const handleRegister = async (name, username, password, role = "student") => {
         try { 
@@ -84,11 +93,25 @@ export const AuthProvider = ({children}) => {
 
     const getHistoryOfUser = async () => {
         try {
-            let request = await client.get("/get_all_activity", {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
+            let request = await client.get("/get_all_activity");
+            return request.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    const clearUserHistoryApi = async () => {
+        try {
+            let request = await client.delete("/clear_user_history");
+            return request.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    const deleteMeetingHistoryApi = async (meetingId) => {
+        try {
+            let request = await client.delete(`/delete_meeting_history/${meetingId}`);
             return request.data;
         } catch (error) {
             throw error;
@@ -116,6 +139,11 @@ export const AuthProvider = ({children}) => {
         } catch (err) {
             throw err;
         }
+    };
+
+    const getActiveRoomsApi = async () => {
+        const request = await client.get("/active-rooms");
+        return request.data;
     };
 
     const handleForgotPassword = async (username) => {
@@ -193,6 +221,25 @@ export const AuthProvider = ({children}) => {
         }
     };
 
+    const deleteUserApi = async (userId) => {
+        try {
+            let request = await client.delete(`/admin/users/${userId}`);
+            return request.data;
+        } catch (err) {
+            throw err;
+        }
+    };
+
+    const getSiteStatusApi = async () => {
+        const request = await client.get('/site-status');
+        return request.data;
+    };
+
+    const updateSiteStatusApi = async (isOnline) => {
+        const request = await client.put('/site-status', { isOnline });
+        return request.data;
+    };
+
     const getMediaPermissionsApi = async (sessionId) => {
         try {
             let request = await client.get(`/admin/media-permissions/${sessionId}`);
@@ -233,6 +280,9 @@ export const AuthProvider = ({children}) => {
         setCurrentUser,
         addToUserHistory,
         getHistoryOfUser,
+        clearUserHistoryApi,
+        deleteMeetingHistoryApi,
+        getActiveRoomsApi,
         handleRegister,
         handleLogin,
         handleGoogleLogin,
@@ -243,6 +293,9 @@ export const AuthProvider = ({children}) => {
         getQuizRecordsApi,
         getAllUsersApi,
         updateUserRoleStatusApi,
+        deleteUserApi,
+        getSiteStatusApi,
+        updateSiteStatusApi,
         getMediaPermissionsApi,
         updateMediaPermissionApi,
         getAgoraRtcTokenApi

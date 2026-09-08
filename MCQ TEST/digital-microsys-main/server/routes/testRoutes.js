@@ -7,8 +7,8 @@ const { uploadCSV } = require('../middleware/upload');
 // All test routes require authentication
 router.use(protect);
 
-// Admin dashboard stats
-router.get('/stats/dashboard', authorize('admin'), testController.getDashboardStats);
+// Admin dashboard stats (accessible by admin and trainer)
+router.get('/stats/dashboard', authorize('admin', 'trainer'), testController.getDashboardStats);
 
 // CRUD
 router.get('/', testController.getTests);
@@ -17,6 +17,7 @@ router.post('/', authorize('admin'), testController.createTest);
 router.put('/:id', authorize('admin'), testController.updateTest);
 router.delete('/:id', authorize('admin'), testController.deleteTest);
 router.put('/:id/publish', authorize('admin'), testController.publishTest);
+router.post('/:id/send', authorize('admin', 'trainer'), testController.sendTestToStudents);
 
 // Questions
 router.get('/:id/questions', testController.getQuestions);

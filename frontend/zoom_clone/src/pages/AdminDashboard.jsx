@@ -5,6 +5,7 @@ import {
   Select, MenuItem, Switch, Button, Chip, Grid,
   Card, CardContent, IconButton, Avatar, TextField,
   InputAdornment, Tooltip, Divider, LinearProgress,
+  Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, CircularProgress,
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import SchoolIcon from "@mui/icons-material/School";
@@ -21,6 +22,11 @@ import BlockIcon from "@mui/icons-material/Block";
 import GroupIcon from "@mui/icons-material/Group";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import DeleteIcon from "@mui/icons-material/Delete";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutlined";
+import AssessmentIcon from "@mui/icons-material/Assessment";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
 import toast from "react-hot-toast";
@@ -54,12 +60,19 @@ const MOCK_ACTIVITY = [
 export default function AdminDashboard() {
   useAdminGuard();
   const navigate = useNavigate();
-  const { getAllUsersApi, updateUserRoleStatusApi } = useContext(AuthContext);
+  const { getAllUsersApi, updateUserRoleStatusApi, deleteUserApi, getSiteStatusApi, updateSiteStatusApi } = useContext(AuthContext);
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const [search, setSearch] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  // Delete modal states
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -73,7 +86,29 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    const authed = sessionStorage.getItem("admin_authenticated");
+    if (authed === "true") {
+      fetchUsers();
+      getSiteStatusApi()
+        .then((data) => setIsOnline(data?.isOnline ?? true))
+        .catch((err) => console.warn("Could not fetch site status:", err))
+        .finally(() => setStatusLoading(false));
+    }
+  }, []);
+
+  const handleSiteStatusToggle = async () => {
+    setStatusLoading(true);
+    try {
+      const data = await updateSiteStatusApi(!isOnline);
+      setIsOnline(data.isOnline);
+      toast.success(data.isOnline ? "Website is now online." : "Website is now offline.");
+    } catch {
+      toast.error("Failed to update website status.");
+    } finally {
+      setStatusLoading(false);
+    }
+  };
 
   const handleRoleChange = async (userId, newRole) => {
     try {
@@ -92,6 +127,33 @@ export default function AdminDashboard() {
       fetchUsers();
     } catch (err) {
       toast.error("Failed to update account status.");
+    }
+  };
+
+  const handleOpenDeleteModal = (user) => {
+    setUserToDelete(user);
+    setDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (deletingId) return;
+    setDeleteModalOpen(false);
+    setUserToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    const targetId = userToDelete.id || userToDelete._id;
+    setDeletingId(targetId);
+    try {
+      await deleteUserApi(targetId);
+      toast.success(`User "${userToDelete.name || userToDelete.username}" deleted successfully!`);
+      handleCloseDeleteModal();
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete user.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -180,6 +242,48 @@ export default function AdminDashboard() {
           <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 2 }} />
 
           <Typography sx={{ color: "#334155", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5, px: 1 }}>
+            Test Management
+          </Typography>
+          <Box
+            onClick={() => navigate("/admin/tests")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(14,113,235,0.12)", color: "#60a5fa" },
+            }}
+          >
+            <AssignmentIcon fontSize="small" sx={{ color: "#0e71eb" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Manage Tests</Typography>
+          </Box>
+          <Box
+            onClick={() => navigate("/admin/tests/create")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(16,185,129,0.12)", color: "#34d399" },
+            }}
+          >
+            <AddCircleOutlineIcon fontSize="small" sx={{ color: "#10b981" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>Create New Test</Typography>
+          </Box>
+          <Box
+            onClick={() => navigate("/admin/results")}
+            sx={{
+              display: "flex", alignItems: "center", gap: 1.5,
+              px: 2, py: 1.3, borderRadius: "10px", cursor: "pointer", mb: 0.5,
+              color: "#94a3b8", transition: "all 0.15s ease",
+              "&:hover": { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
+            }}
+          >
+            <AssessmentIcon fontSize="small" sx={{ color: "#f59e0b" }} />
+            <Typography sx={{ fontSize: "13px", fontWeight: 600 }}>View Test Results</Typography>
+          </Box>
+
+          <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 2 }} />
+
+          <Typography sx={{ color: "#334155", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", mb: 1.5, px: 1 }}>
             Quick Links
           </Typography>
           <Box
@@ -227,6 +331,39 @@ export default function AdminDashboard() {
             </Typography>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Website Status ON/OFF Toggle */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                px: 2,
+                py: 0.7,
+                borderRadius: "10px",
+                bgcolor: isOnline ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                border: `1px solid ${isOnline ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                <PowerSettingsNewIcon sx={{ fontSize: 18, color: isOnline ? "#10b981" : "#ef4444" }} />
+                <Typography sx={{ fontSize: "12px", fontWeight: 700, color: isOnline ? "#10b981" : "#ef4444" }}>
+                  Website {isOnline ? "ONLINE" : "OFFLINE"}
+                </Typography>
+              </Box>
+              <Tooltip title={isOnline ? "Click to turn website OFF" : "Click to turn website ON"}>
+                <Switch
+                  checked={isOnline}
+                  onChange={handleSiteStatusToggle}
+                  disabled={statusLoading}
+                  size="small"
+                  sx={{
+                    "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
+                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                  }}
+                />
+              </Tooltip>
+            </Box>
+
             <Chip
               icon={<AdminPanelSettingsIcon sx={{ fontSize: "16px !important" }} />}
               label="Administrator"
@@ -265,6 +402,25 @@ export default function AdminDashboard() {
                   </Grid>
                 ))}
               </Grid>
+
+              <Paper sx={{ p: 3, mb: 4, borderRadius: "14px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                  <Box>
+                    <Typography sx={{ color: "#f1f5f9", fontWeight: 700, fontSize: "16px" }}>Website access</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: "13px", mt: 0.5 }}>
+                      {isOnline ? "The website is available to users." : "The website is offline and user access is blocked."}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleSiteStatusToggle}
+                    disabled={statusLoading}
+                    sx={{ minWidth: 120, bgcolor: isOnline ? "#10b981" : "#ef4444", color: "#fff", fontWeight: 700, "&:hover": { bgcolor: isOnline ? "#059669" : "#dc2626" } }}
+                  >
+                    {statusLoading ? "Updating..." : isOnline ? "Turn off" : "Turn on"}
+                  </Button>
+                </Box>
+              </Paper>
 
               {/* User Distribution */}
               <Grid container spacing={3}>
@@ -345,75 +501,97 @@ export default function AdminDashboard() {
                       <TableCell>Role</TableCell>
                       <TableCell>Change Role</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredUsers.map((u) => (
-                      <TableRow
-                        key={u._id}
-                        sx={{ "& td": { borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#cbd5e1", fontSize: "13px" }, "&:hover": { bgcolor: "rgba(255,255,255,0.02)" } }}
-                      >
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: "#0e71eb", fontSize: "13px", fontWeight: 700 }}>
-                              {(u.name || u.username || "U").charAt(0).toUpperCase()}
-                            </Avatar>
-                            <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#e2e8f0" }}>{u.name || "N/A"}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ fontFamily: "monospace" }}>{u.username}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={u.role || "student"}
-                            size="small"
-                            sx={{
-                              fontWeight: 700, fontSize: "11px", textTransform: "capitalize",
-                              bgcolor: u.role === "admin" ? "rgba(245,158,11,0.12)" : u.role === "trainer" ? "rgba(139,92,246,0.12)" : "rgba(16,185,129,0.12)",
-                              color: u.role === "admin" ? "#f59e0b" : u.role === "trainer" ? "#a78bfa" : "#34d399",
-                              border: `1px solid ${u.role === "admin" ? "rgba(245,158,11,0.25)" : u.role === "trainer" ? "rgba(139,92,246,0.25)" : "rgba(16,185,129,0.25)"}`,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            size="small"
-                            value={u.role || "student"}
-                            onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                            sx={{
-                              minWidth: 120, fontSize: "13px", borderRadius: "8px",
-                              color: "#cbd5e1", bgcolor: "rgba(255,255,255,0.05)",
-                              "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
-                              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" },
-                              "& .MuiSelect-icon": { color: "#475569" },
-                            }}
-                            MenuProps={{ PaperProps: { sx: { bgcolor: "#1e293b", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.08)" } } }}
-                          >
-                            <MenuItem value="student">Student</MenuItem>
-                            <MenuItem value="trainer">Trainer</MenuItem>
-                            <MenuItem value="admin">Admin</MenuItem>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <Switch
-                              checked={u.is_active !== false}
-                              onChange={() => handleStatusToggle(u._id, u.is_active !== false)}
+                    {filteredUsers.map((u) => {
+                      const userId = u.id || u._id;
+                      return (
+                        <TableRow
+                          key={userId}
+                          sx={{ "& td": { borderBottom: "1px solid rgba(255,255,255,0.04)", color: "#cbd5e1", fontSize: "13px" }, "&:hover": { bgcolor: "rgba(255,255,255,0.02)" } }}
+                        >
+                          <TableCell>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                              <Avatar sx={{ width: 32, height: 32, bgcolor: "#0e71eb", fontSize: "13px", fontWeight: 700 }}>
+                                {(u.name || u.username || "U").charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Typography sx={{ fontSize: "13px", fontWeight: 600, color: "#e2e8f0" }}>{u.name || "N/A"}</Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ fontFamily: "monospace" }}>{u.username}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={u.role || "student"}
                               size="small"
                               sx={{
-                                "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
-                                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                                fontWeight: 700, fontSize: "11px", textTransform: "capitalize",
+                                bgcolor: u.role === "admin" ? "rgba(245,158,11,0.12)" : u.role === "trainer" ? "rgba(139,92,246,0.12)" : "rgba(16,185,129,0.12)",
+                                color: u.role === "admin" ? "#f59e0b" : u.role === "trainer" ? "#a78bfa" : "#34d399",
+                                border: `1px solid ${u.role === "admin" ? "rgba(245,158,11,0.25)" : u.role === "trainer" ? "rgba(139,92,246,0.25)" : "rgba(16,185,129,0.25)"}`,
                               }}
                             />
-                            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: u.is_active !== false ? "#10b981" : "#ef4444" }}>
-                              {u.is_active !== false ? "Active" : "Disabled"}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              size="small"
+                              value={u.role || "student"}
+                              onChange={(e) => handleRoleChange(userId, e.target.value)}
+                              sx={{
+                                minWidth: 120, fontSize: "13px", borderRadius: "8px",
+                                color: "#cbd5e1", bgcolor: "rgba(255,255,255,0.05)",
+                                "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.1)" },
+                                "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.2)" },
+                                "& .MuiSelect-icon": { color: "#475569" },
+                              }}
+                              MenuProps={{ PaperProps: { sx: { bgcolor: "#1e293b", color: "#cbd5e1", border: "1px solid rgba(255,255,255,0.08)" } } }}
+                            >
+                              <MenuItem value="student">Student</MenuItem>
+                              <MenuItem value="trainer">Trainer</MenuItem>
+                              <MenuItem value="admin">Admin</MenuItem>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Switch
+                                checked={u.is_active !== false}
+                                onChange={() => handleStatusToggle(userId, u.is_active !== false)}
+                                size="small"
+                                sx={{
+                                  "& .MuiSwitch-switchBase.Mui-checked": { color: "#10b981" },
+                                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#10b981" },
+                                }}
+                              />
+                              <Typography sx={{ fontSize: "12px", fontWeight: 600, color: u.is_active !== false ? "#10b981" : "#ef4444" }}>
+                                {u.is_active !== false ? "Active" : "Disabled"}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Delete User">
+                              <IconButton
+                                onClick={() => handleOpenDeleteModal(u)}
+                                size="small"
+                                sx={{
+                                  color: "#ef4444",
+                                  bgcolor: "rgba(239,68,68,0.1)",
+                                  border: "1px solid rgba(239,68,68,0.2)",
+                                  "&:hover": {
+                                    bgcolor: "rgba(239,68,68,0.2)",
+                                  },
+                                }}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filteredUsers.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 6, color: "#475569", borderBottom: "none" }}>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6, color: "#475569", borderBottom: "none" }}>
                           {search ? `No users matching "${search}"` : "No users found."}
                         </TableCell>
                       </TableRow>
@@ -451,6 +629,57 @@ export default function AdminDashboard() {
           )}
         </Box>
       </Box>
+
+      {/* ── DELETE CONFIRMATION DIALOG ── */}
+      <Dialog
+        open={deleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        PaperProps={{
+          sx: {
+            bgcolor: "#1e293b",
+            color: "#f1f5f9",
+            borderRadius: "14px",
+            border: "1px solid rgba(255,255,255,0.1)",
+            maxWidth: 440,
+            width: "100%",
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "18px", borderBottom: "1px solid rgba(255,255,255,0.06)", pb: 2 }}>
+          Delete User Account
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <DialogContentText sx={{ color: "#94a3b8", fontSize: "14px" }}>
+            Are you sure you want to permanently delete the account for{" "}
+            <strong style={{ color: "#f1f5f9" }}>{userToDelete?.name || userToDelete?.username}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <Button
+            onClick={handleCloseDeleteModal}
+            disabled={!!deletingId}
+            sx={{ color: "#94a3b8", "&:hover": { bgcolor: "rgba(255,255,255,0.05)" } }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            disabled={!!deletingId}
+            variant="contained"
+            color="error"
+            startIcon={deletingId ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              bgcolor: "#ef4444",
+              "&:hover": { bgcolor: "#dc2626" },
+              fontWeight: 600,
+              borderRadius: "8px",
+              px: 2.5,
+            }}
+          >
+            {deletingId ? "Deleting..." : "Delete User"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -6,6 +6,39 @@ let messages = {};
 let timeOnline = {};
 let activeQuizzes = {}; // roomKey -> active quiz state (stores server-side correctOptionIndex, timer, and buffered responses)
 let socketUserMap = {}; // socket.id -> { username, role, room }
+let meetingHosts = {}; // roomKey -> { ownerUsername, activeHostId }
+
+const getSocketUser = (socket) => socketUserMap[socket.id];
+const isRoomHost = (socket, room) => {
+    const user = getSocketUser(socket);
+    return Boolean(
+        user &&
+        user.room === room &&
+        meetingHosts[room]?.activeHostId === socket.id &&
+        ['admin', 'trainer'].includes(user.role)
+    );
+};
+
+const emitSocketError = (socket, message) => {
+    socket.emit('socket-error', { code: 'FORBIDDEN', message });
+};
+
+const getRoomUsers = (room) => connections[room].map((sId) => ({
+    socketId: sId,
+    username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
+    role: sId === meetingHosts[room]?.activeHostId ? "trainer" : "student",
+    profilePic: socketUserMap[sId]?.profilePic || null,
+    mediaState: socketUserMap[sId]?.mediaState || { video: true, audio: true }
+}));
+
+const broadcastRoomState = (io, room) => {
+    if (!connections[room] || !meetingHosts[room]) return;
+
+    const roomUsers = getRoomUsers(room);
+    connections[room].forEach((sId) => {
+        io.to(sId).emit("user-joined", sId, connections[room], meetingHosts[room].activeHostId, null, roomUsers);
+    });
+};
 
 /**
  * Asynchronously flushes buffered quiz responses from in-memory / Redis cache to the Database
@@ -42,6 +75,7 @@ const flushQuizSubmissionsToDB = async (roomKey, quizState) => {
 export const connectToSocket = (server) => {
     const allowedOrigins = [
         'http://localhost:5173',
+        'https://sync-learn-binwzfjz1-shubhamm27p.vercel.app',
         'https://sync-learn.vercel.app',
         'https://synclearn-backend.onrender.com'
     ];
@@ -61,29 +95,74 @@ export const connectToSocket = (server) => {
         }
     });
 
+    io.use(async (socket, next) => {
+        const token = socket.handshake.auth?.token || socket.handshake.headers.authorization?.replace(/^Bearer\s+/i, '');
+        const authPayload = socket.handshake.auth || {};
+
+        socket.authUser = null;
+
+        if (!token) {
+            return next(new Error('Authentication error: No token provided'));
+        }
+
+        try {
+            const { data: user, error } = await supabase
+                .from('users')
+                .select('id, name, username, role, is_active, email, profile_pic')
+                .eq('token', token)
+                .maybeSingle();
+
+            if (user && user.is_active !== false) {
+                socket.authUser = user;
+                return next();
+            } else {
+                return next(new Error('Authentication error: Invalid or inactive token'));
+            }
+        } catch (error) {
+            console.warn('[Socket Auth Error] Supabase lookup failed:', error.message);
+            return next(new Error('Authentication error: Internal server error'));
+        }
+    });
+
     io.on("connection", (socket) => {
         console.log("Socket connected:", socket.id);
 
         socket.on("join-call", (path, userMetaData = {}) => {
+            const role = socket.authUser?.role || userMetaData.role || "student";
             if (connections[path] === undefined) {
+                if (role !== "trainer" && role !== "admin") {
+                    socket.emit("kicked-from-call", { kickedBy: "System", reason: "Meeting code is invalid or meeting has not started yet." });
+                    return;
+                }
                 connections[path] = [];
+            }
+
+            const username = socket.authUser.username || socket.authUser.email;
+            if (!meetingHosts[path]) {
+                meetingHosts[path] = {
+                    ownerUsername: username,
+                    activeHostId: null
+                };
             }
 
             connections[path].push(socket.id);
             timeOnline[socket.id] = new Date();
-            
-            const isFirstInRoom = connections[path][0] === socket.id;
+
+            const isOwner = meetingHosts[path].ownerUsername === username;
+            if ((isOwner || !meetingHosts[path].activeHostId) && ['admin', 'trainer'].includes(role)) {
+                meetingHosts[path].activeHostId = socket.id;
+            }
+
             socketUserMap[socket.id] = {
-                username: userMetaData.username || `User_${socket.id.substring(0, 4)}`,
-                role: userMetaData.role || (isFirstInRoom ? "trainer" : "student"),
-                room: path
+                username,
+                role: socket.id === meetingHosts[path].activeHostId ? role : role,
+                room: path,
+                userId: socket.authUser?.id || null,
+                profilePic: socket.authUser?.profile_pic || null,
+                mediaState: userMetaData.mediaState || { video: true, audio: true }
             };
 
-            const roomUserList = connections[path].map(sId => ({
-                socketId: sId,
-                username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
-                role: socketUserMap[sId]?.role || (connections[path][0] === sId ? "trainer" : "student")
-            }));
+            const roomUserList = getRoomUsers(path);
 
             // Notify everyone in the room
             for (let a = 0; a < connections[path].length; a++) {
@@ -91,7 +170,7 @@ export const connectToSocket = (server) => {
                     "user-joined", 
                     socket.id, 
                     connections[path], 
-                    connections[path][0],
+                    meetingHosts[path].activeHostId,
                     socketUserMap[socket.id],
                     roomUserList
                 );
@@ -104,7 +183,9 @@ export const connectToSocket = (server) => {
                         "chat-message", 
                         messages[path][a]['data'], 
                         messages[path][a]['sender'], 
-                        messages[path][a]['socket-id-sender']
+                        messages[path][a]['socket-id-sender'],
+                        messages[path][a]['timestamp'],
+                        messages[path][a]['recipient']
                     );
                 }
             }
@@ -129,24 +210,38 @@ export const connectToSocket = (server) => {
         });
 
         socket.on("signal", (toId, message) => {
+            const target = socketUserMap[toId];
+            if (!getSocketUser(socket)?.room || !target || target.room !== getSocketUser(socket).room) {
+                return emitSocketError(socket, 'You can only signal participants in your meeting.');
+            }
             io.to(toId).emit("signal", socket.id, message);
         });
 
         // Admin/Host Media Permission Override
         socket.on("host-toggle-media", ({ targetId, type, state }) => {
+            const room = getSocketUser(socket)?.room;
+            const target = socketUserMap[targetId];
+            if (!room || !isRoomHost(socket, room) || !target || target.room !== room || !['audio', 'video'].includes(type) || typeof state !== 'boolean') {
+                return emitSocketError(socket, 'Only the meeting host can change participant media.');
+            }
             io.to(targetId).emit("host-toggle-media", { type, state, hostId: socket.id });
             io.to(targetId).emit("media-permission-updated", { type, state, updatedBy: socket.id });
         });
 
         socket.on("admin:toggle-media-permission", async ({ sessionId, targetSocketId, targetUserId, canPublishAudio, canPublishVideo, canScreenShare }) => {
             try {
-                if (sessionId && targetUserId) {
+                const room = getSocketUser(socket)?.room;
+                const target = socketUserMap[targetSocketId];
+                if (!room || !isRoomHost(socket, room) || !target || target.room !== room || (sessionId && sessionId !== room)) {
+                    return emitSocketError(socket, 'Only the meeting host can change media permissions in this meeting.');
+                }
+                if (sessionId && target.userId) {
                     await supabase.from('media_permissions').upsert({
                         session_id: sessionId,
-                        user_id: targetUserId,
-                        can_publish_audio: canPublishAudio,
-                        can_publish_video: canPublishVideo,
-                        can_screen_share: canScreenShare,
+                        user_id: target.userId,
+                        can_publish_audio: Boolean(canPublishAudio),
+                        can_publish_video: Boolean(canPublishVideo),
+                        can_screen_share: Boolean(canScreenShare),
                         updated_by: "Admin"
                     }, { onConflict: 'session_id, user_id' });
                 }
@@ -162,17 +257,29 @@ export const connectToSocket = (server) => {
         });
 
         socket.on("request-camera-permission", ({ targetId, hostName }) => {
+            const room = getSocketUser(socket)?.room;
+            const target = socketUserMap[targetId];
+            if (!room || !isRoomHost(socket, room) || !target || target.room !== room) {
+                return emitSocketError(socket, 'Only the meeting host can request participant camera access.');
+            }
             io.to(targetId).emit("camera-permission-request", { hostId: socket.id, hostName: hostName || "Trainer" });
         });
 
         socket.on("camera-permission-response", ({ hostId, allowed, studentName }) => {
+            const room = getSocketUser(socket)?.room;
+            if (!room || socketUserMap[hostId]?.room !== room || !isRoomHost({ id: hostId }, room)) {
+                return emitSocketError(socket, 'Invalid camera permission response target.');
+            }
             io.to(hostId).emit("camera-permission-response", { allowed, studentId: socket.id, studentName });
         });
 
         // Host Remove/Kick Participant Event
         socket.on("remove-participant", ({ targetSocketId, targetUsername }) => {
             const userRoom = socketUserMap[socket.id]?.room;
-            if (!userRoom || !connections[userRoom]) return;
+            const target = socketUserMap[targetSocketId];
+            if (!userRoom || !connections[userRoom] || !isRoomHost(socket, userRoom) || !target || target.room !== userRoom || targetSocketId === socket.id) {
+                return emitSocketError(socket, 'Only the meeting host can remove participants from this meeting.');
+            }
 
             // Notify target socket that they were kicked from the call by Host
             io.to(targetSocketId).emit("kicked-from-call", {
@@ -190,19 +297,38 @@ export const connectToSocket = (server) => {
                 connections[userRoom].splice(idx, 1);
             }
 
-            const updatedRoomUsers = connections[userRoom].map(sId => ({
-                socketId: sId,
-                username: socketUserMap[sId]?.username || `User_${sId.substring(0, 4)}`,
-                role: socketUserMap[sId]?.role || (connections[userRoom][0] === sId ? "trainer" : "student")
-            }));
+            if (meetingHosts[userRoom]?.activeHostId === targetSocketId) {
+                meetingHosts[userRoom].activeHostId = null;
+                connections[userRoom].forEach((sId) => {
+                    if (socketUserMap[sId]) socketUserMap[sId].role = "student";
+                });
+            }
+
+            const updatedRoomUsers = getRoomUsers(userRoom);
 
             // Notify remaining participants in the room
             connections[userRoom].forEach(elem => {
                 io.to(elem).emit("user-left", targetSocketId);
-                io.to(elem).emit("user-joined", elem, connections[userRoom], connections[userRoom][0], null, updatedRoomUsers);
+                io.to(elem).emit("user-joined", elem, connections[userRoom], meetingHosts[userRoom]?.activeHostId, null, updatedRoomUsers);
             });
 
             console.log(`[Host Action] ${socket.id} removed participant ${targetSocketId} (${targetUsername}) from room ${userRoom}`);
+        });
+
+        // Real-time media toggle sync listener
+        socket.on("media-state-change", (mediaState) => {
+            if (socketUserMap[socket.id]) {
+                socketUserMap[socket.id].mediaState = mediaState;
+                const room = socketUserMap[socket.id].room;
+                if (room && connections[room]) {
+                    connections[room].forEach(sId => {
+                        io.to(sId).emit("media-state-updated", {
+                            socketId: socket.id,
+                            mediaState
+                        });
+                    });
+                }
+            }
         });
 
         // ==========================================
@@ -212,6 +338,10 @@ export const connectToSocket = (server) => {
             const userRoom = socketUserMap[socket.id]?.room;
             if (!userRoom && !quizData.meetingId) return;
             const roomKey = quizData.meetingId || userRoom;
+
+            if (!userRoom || roomKey !== userRoom || !isRoomHost(socket, userRoom)) {
+                return emitSocketError(socket, 'Only the meeting host can launch a quiz.');
+            }
 
             const timeLimit = Number(quizData.timeLimitSeconds) || 30;
             const pushedAt = new Date();
@@ -326,23 +456,49 @@ export const connectToSocket = (server) => {
             }
         });
 
-        socket.on("chat-message", (data, sender) => {
+        socket.on("chat-message", (data, sender, recipient = "everyone", timestamp) => {
             const userRoom = socketUserMap[socket.id]?.room;
             if (userRoom && connections[userRoom]) {
                 if (messages[userRoom] === undefined) {
                     messages[userRoom] = [];
                 }
 
-                messages[userRoom].push({ 'sender': sender, "data": data, "socket-id-sender": socket.id });
+                const timeStr = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                messages[userRoom].push({ 
+                    'sender': sender, 
+                    "data": data, 
+                    "socket-id-sender": socket.id,
+                    "recipient": recipient,
+                    "timestamp": timeStr
+                });
 
                 connections[userRoom].forEach((elem) => {
-                    io.to(elem).emit("chat-message", data, sender, socket.id);
+                    io.to(elem).emit("chat-message", data, sender, socket.id, timeStr, recipient);
                 });
+            }
+        });
+
+        socket.on("end-meeting", () => {
+            const userRoom = socketUserMap[socket.id]?.room;
+            if (userRoom && isRoomHost(socket, userRoom)) {
+                if (connections[userRoom]) {
+                    connections[userRoom].forEach((elem) => {
+                        io.to(elem).emit("meeting-ended", { reason: "The host has ended the meeting." });
+                    });
+                    if (activeQuizzes[userRoom]) {
+                        flushQuizSubmissionsToDB(userRoom, activeQuizzes[userRoom]);
+                        delete activeQuizzes[userRoom];
+                    }
+                    delete connections[userRoom];
+                    delete meetingHosts[userRoom];
+                }
             }
         });
 
         socket.on("disconnect", () => {
             const userRoom = socketUserMap[socket.id]?.room;
+            const wasActiveHost = meetingHosts[userRoom]?.activeHostId === socket.id;
             delete socketUserMap[socket.id];
             delete timeOnline[socket.id];
 
@@ -362,6 +518,18 @@ export const connectToSocket = (server) => {
                         delete activeQuizzes[userRoom];
                     }
                     delete connections[userRoom];
+                    delete meetingHosts[userRoom];
+                } else if (wasActiveHost) {
+                    connections[userRoom].forEach((elem) => {
+                        io.to(elem).emit("meeting-ended", { reason: "The host has left, ending the meeting for everyone." });
+                    });
+                    
+                    if (activeQuizzes[userRoom]) {
+                        flushQuizSubmissionsToDB(userRoom, activeQuizzes[userRoom]);
+                        delete activeQuizzes[userRoom];
+                    }
+                    delete connections[userRoom];
+                    delete meetingHosts[userRoom];
                 }
             }
         });

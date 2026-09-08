@@ -1,10 +1,15 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+const apiUrl = configuredApiUrl && !configuredApiUrl.includes('your-backend.onrender.com')
+  ? configuredApiUrl.replace(/\/$/, '')
+  : import.meta.env.PROD
+    ? 'https://digital-microsys-api.onrender.com'
+    : '';
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : '/api',
+  baseURL: apiUrl ? `${apiUrl}/api` : '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,12 +34,17 @@ API.interceptors.response.use(
   (error) => {
     // Network error (no response from server)
     if (!error.response) {
-      toast.error('Connection lost. Please check your internet.', { id: 'network-error' });
+      toast.error('Cannot reach the test server. Please try again shortly.', { id: 'network-error' });
       return Promise.reject(error);
     }
 
     const { status, data } = error.response;
     const message = data?.message || 'Something went wrong';
+
+    if (data?.code === 'SITE_OFFLINE') {
+      toast.error(message, { id: 'site-offline' });
+      return Promise.reject(error);
+    }
 
     switch (status) {
       case 401:

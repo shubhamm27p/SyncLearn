@@ -162,6 +162,7 @@ body {
 .brand-effect {
   background: linear-gradient(135deg, #0e71eb 0%, #00f2fe 50%, #2563eb 100%);
   background-size: 200% auto;
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 800 !important;

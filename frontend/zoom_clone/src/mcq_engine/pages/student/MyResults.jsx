@@ -23,7 +23,9 @@ const MyResults = () => {
         setResults(res.data.data);
       }
     } catch (err) {
-      toast.error('Failed to load results');
+      console.warn("MyResults API unavailable, loading local results:", err);
+      const localSubmissions = JSON.parse(localStorage.getItem('viora_test_submissions_db') || '[]');
+      setResults(localSubmissions);
     } finally {
       setLoading(false);
     }
@@ -75,7 +77,7 @@ const MyResults = () => {
           </p>
           <button
             className="dms-btn dms-btn-primary"
-            onClick={() => navigate('/tests')}
+            onClick={() => navigate('/student/dashboard')}
           >
             Browse Available Tests →
           </button>

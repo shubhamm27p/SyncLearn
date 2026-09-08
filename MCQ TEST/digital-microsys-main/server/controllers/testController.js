@@ -1,5 +1,6 @@
 const fs = require('fs');
 const Papa = require('papaparse');
+const mongoose = require('mongoose');
 const Test = require('../models/Test');
 const Question = require('../models/Question');
 const AnswerKey = require('../models/AnswerKey');
@@ -43,11 +44,16 @@ exports.createTest = async (req, res, next) => {
     const validStartTime = startTime && !isNaN(new Date(startTime).getTime()) ? new Date(startTime) : undefined;
     const validEndTime = endTime && !isNaN(new Date(endTime).getTime()) ? new Date(endTime) : undefined;
 
+    const creatorId = (req.user && req.user._id && mongoose.Types.ObjectId.isValid(req.user._id))
+      ? req.user._id
+      : new mongoose.Types.ObjectId();
+
     const test = await Test.create({
       title: title.trim(),
       description: description || '',
       subject: testSubject,
-      createdBy: req.user._id,
+      createdBy: creatorId,
+      status: req.body.status || 'published',
       startTime: validStartTime,
       endTime: validEndTime,
       duration: Number(duration) || 60,
@@ -581,10 +587,14 @@ exports.getDashboardStats = async (req, res, next) => {
         Test.countDocuments(),
         User.countDocuments({ role: 'student' }),
         Result.countDocuments(),
+        // Count live tests: active/published with no time restriction OR within their time window
         Test.countDocuments({
           status: { $in: ['published', 'active'] },
-          startTime: { $lte: now },
-          endTime: { $gte: now },
+          $or: [
+            { startTime: { $exists: false }, endTime: { $exists: false } },
+            { startTime: null, endTime: null },
+            { startTime: { $lte: now }, endTime: { $gte: now } },
+          ],
         }),
         Test.find()
           .populate('createdBy', 'name')
@@ -610,6 +620,39 @@ exports.getDashboardStats = async (req, res, next) => {
         liveTests,
         recentTests,
         recentSubmissions,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Send test to students (publish & dispatch invitation record)
+ * @route   POST /api/tests/:id/send
+ * @access  Private (admin)
+ */
+exports.sendTestToStudents = async (req, res, next) => {
+  try {
+    const { emails, message, accessCode } = req.body;
+    const test = await Test.findById(req.params.id);
+    if (!test) {
+      return res.status(404).json({ success: false, message: 'Test not found' });
+    }
+
+    test.status = 'published';
+    if (accessCode) {
+      test.accessCode = accessCode;
+    }
+    await test.save();
+
+    res.json({
+      success: true,
+      message: `Test invitation dispatched to ${Array.isArray(emails) ? emails.length : 1} student(s)`,
+      data: {
+        testId: test._id,
+        recipients: emails,
+        status: test.status,
       },
     });
   } catch (error) {

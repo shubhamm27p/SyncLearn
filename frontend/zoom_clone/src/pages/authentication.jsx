@@ -26,9 +26,10 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import KeyIcon from '@mui/icons-material/Key';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
+import ContactSupportModal from '../components/ContactSupportModal.jsx';
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
@@ -106,12 +107,24 @@ export default function Authentication() {
   const [googleModalOpen, setGoogleModalOpen] = useState(false);
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   // 0: Log In, 1: Sign Up, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
   const [open, setOpen] = useState(false);
 
   const routeTo = useNavigate();
+  const location = useLocation();
+
+  const goAfterAuthentication = () => {
+    const params = new URLSearchParams(location.search);
+    const redirectUrl = params.get('redirect');
+    if (redirectUrl) {
+      routeTo(redirectUrl, { replace: true });
+    } else {
+      routeTo(location.state?.from || '/home', { replace: true });
+    }
+  };
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
   const handleMouseDownPassword = (event) => {
@@ -140,6 +153,9 @@ export default function Authentication() {
       else if (username.includes('@') && !/^\S+@\S+\.\S+$/.test(username)) {
         errors.username = "Invalid email format";
       }
+      if (name && username && name.trim().toLowerCase() === username.trim().toLowerCase()) {
+        errors.username = "Username/Email cannot be identical to Full Name";
+      }
       if (!password) errors.password = "Password is required";
       else if (password.length < 6) errors.password = "Password must be at least 6 characters";
     } else if (formState === 2) {
@@ -163,7 +179,7 @@ export default function Authentication() {
         setMessage(result || 'Logged in successfully!');
         setOpen(true);
         setError('');
-        routeTo('/home');
+        goAfterAuthentication();
       } else if (formState === 1) {
         let result = await handleRegister(name, username, password, role);
         setMessage(result || 'Registered successfully!');
@@ -172,13 +188,10 @@ export default function Authentication() {
         setFormState(0);
       } else if (formState === 2) {
         let result = await handleForgotPassword(username);
-        setMessage(result.message || 'New password generated and sent to your email!');
+        setMessage(result.message || 'A password reset code was sent to your email.');
         setOpen(true);
         setError('');
-        if (result.newPassword) {
-          setPassword(result.newPassword);
-        }
-        setFormState(0);
+        setFormState(3);
       } else if (formState === 3) {
         let result = await handleResetPassword(username, resetToken, newPassword);
         setMessage(result || 'Password reset successfully!');
@@ -218,7 +231,7 @@ export default function Authentication() {
       setMessage(result || 'Signed in with Google!');
       setOpen(true);
       setGoogleModalOpen(false);
-      routeTo('/home');
+      goAfterAuthentication();
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || 'Google Sign-In failed');
@@ -428,7 +441,6 @@ export default function Authentication() {
                   >
                     <MenuItem value="student">Student</MenuItem>
                     <MenuItem value="trainer">Trainer</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
                   </Select>
                 </Box>
               </>
@@ -671,6 +683,24 @@ export default function Authentication() {
           </Box>
         </Paper>
 
+        {/* Contact Support Footer */}
+        <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px', mt: 2.5, textAlign: 'center' }}>
+          Need help?{' '}
+          <Typography
+            component="span"
+            onClick={() => setSupportModalOpen(true)}
+            sx={{
+              color: '#0e71eb',
+              fontWeight: 600,
+              cursor: 'pointer',
+              textDecoration: 'none',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+          >
+            Contact Support (synclearn.pvt@gmail.com)
+          </Typography>
+        </Typography>
+
         <Snackbar
           open={open}
           autoHideDuration={4000}
@@ -756,6 +786,8 @@ export default function Authentication() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <ContactSupportModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
       </Container>
     </Box>
   );

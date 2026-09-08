@@ -66,17 +66,31 @@ const TakeCodingTest = () => {
 
   const fetchProblems = async () => {
     try {
-      if (!fromCombinedMCQ) {
-        try {
-          const testRes = await API.get(`/student/tests/${testId}/start`);
-          setTestData(testRes.data.data || testRes.data);
-        } catch (e) {
-          console.warn('Could not fetch test data for pre-screen', e);
+      let probs = [];
+      
+      // If it's a local test, bypass server requests and fetch directly from localStorage
+      if (testId && testId.startsWith('test_local_')) {
+        const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+        const localTest = localTests.find(t => t._id === testId || t.id === testId);
+        if (localTest) {
+          setTestData(localTest);
+          probs = localTest.codingProblems || [];
+        } else {
+          throw new Error("Local test not found");
         }
+      } else {
+        if (!fromCombinedMCQ) {
+          try {
+            const testRes = await API.get(`/student/tests/${testId}/start`);
+            setTestData(testRes.data.data || testRes.data);
+          } catch (e) {
+            console.warn('Could not fetch test data for pre-screen', e);
+          }
+        }
+        const res = await API.get(`/coding/${testId}/student-problems`);
+        probs = res.data.data || [];
       }
 
-      const res = await API.get(`/coding/${testId}/student-problems`);
-      const probs = res.data.data || [];
       setProblems(probs);
 
       const initial = {};
@@ -89,7 +103,29 @@ const TakeCodingTest = () => {
       });
       setCodeState(initial);
     } catch (err) {
-      toast.error('Failed to load problems');
+      console.warn("Error fetching problems, falling back to local storage:", err);
+      try {
+        const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
+        const localTest = localTests.find(t => t._id === testId || t.id === testId);
+        if (localTest) {
+          setTestData(localTest);
+          const probs = localTest.codingProblems || [];
+          setProblems(probs);
+          const initial = {};
+          probs.forEach(p => {
+            const defaultLang = (p.allowedLanguages && p.allowedLanguages[0]) || 'python';
+            initial[p._id] = {
+              code: CodeEditor.BOILERPLATE[defaultLang] || '',
+              language: defaultLang,
+            };
+          });
+          setCodeState(initial);
+        } else {
+          toast.error('Failed to load problems');
+        }
+      } catch (e) {
+        toast.error('Failed to load problems');
+      }
     } finally {
       setLoading(false);
     }

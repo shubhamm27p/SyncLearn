@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from "react";
 import io from "socket.io-client";
 import styles from "../styles/videoComponentModule.module.css";
 import {
+  Avatar,
   Badge,
   Button,
   IconButton,
@@ -43,6 +44,7 @@ import MicOffIcon from '@mui/icons-material/MicOff';
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
 import ChatIcon from '@mui/icons-material/Chat';
+import SendIcon from '@mui/icons-material/Send';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SecurityIcon from '@mui/icons-material/Security';
 import InfoIcon from '@mui/icons-material/Info';
@@ -61,6 +63,9 @@ import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 import GroupIcon from '@mui/icons-material/Group';
 import PersonIcon from '@mui/icons-material/Person';
 import StarIcon from '@mui/icons-material/Star';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import RemoveIcon from '@mui/icons-material/Remove';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../contents/AuthContents";
@@ -97,13 +102,30 @@ export default function VideoMeetComponent() {
 
     const connectionsRef = useRef({});
     const iceCandidatesQueueRef = useRef({});
+    const autoLeaveTimerRef = useRef(null);
 
     const {
+        userData,
+        currentUser,
         userRole: contextRole,
         createQuizApi,
         submitQuizApi,
         getQuizRecordsApi
     } = useContext(AuthContext);
+
+    const getStoredUser = () => {
+        try {
+            const val = localStorage.getItem("currentUser");
+            return val && val !== "undefined" && val !== "null" ? JSON.parse(val) : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const storedUser = getStoredUser();
+    const authUser = currentUser || storedUser || userData;
+    const token = localStorage.getItem("token");
+    const isAuthenticated = Boolean(token && (authUser?.name || authUser?.username));
+    const defaultUsername = authUser?.name || authUser?.username || "";
 
     const userRole = contextRole || localStorage.getItem("userRole") || "student";
 
@@ -118,7 +140,13 @@ export default function VideoMeetComponent() {
     let [messages, setMessages] = useState([]);
     let [newMessages, setNewMessages] = useState(0);
     let [askForUsername, setAskForUsername] = useState(true);
-    let [username, setUsername] = useState("");
+    let [username, setUsername] = useState(defaultUsername);
+
+    useEffect(() => {
+        if (isAuthenticated && defaultUsername) {
+            setUsername(defaultUsername);
+        }
+    }, [defaultUsername, isAuthenticated]);
 
     let [isHost, setIsHost] = useState(false);
     let [hostId, setHostId] = useState(null);
@@ -128,6 +156,7 @@ export default function VideoMeetComponent() {
 
     const videoRef = useRef([]);
     let [videos, setVideos] = useState([]);
+    const [peerMediaStates, setPeerMediaStates] = useState({});
 
     // MCQ Quiz States
     const [mcqModalOpen, setMcqModalOpen] = useState(false);
@@ -167,11 +196,90 @@ export default function VideoMeetComponent() {
     // Chat Sidebar Extra States
     const [chatRecipient, setChatRecipient] = useState("everyone");
     const chatEndRef = useRef(null);
+    const chatInputRef = useRef(null);
 
     // Self Video Drag & Position State
     const [selfVideoPos, setSelfVideoPos] = useState({ x: 20, y: window.innerHeight - 200 });
     const [isDraggingSelfVideo, setIsDraggingSelfVideo] = useState(false);
     const dragOffsetRef = useRef({ x: 0, y: 0 });
+
+    // MCQ Widget Drag, Position & Minimize States
+    const [mcqCardPos, setMcqCardPos] = useState({ x: 24, y: 80 });
+    const [isDraggingMcqCard, setIsDraggingMcqCard] = useState(false);
+    const [mcqMinimized, setMcqMinimized] = useState(false);
+    const mcqDragOffsetRef = useRef({ x: 0, y: 0 });
+
+    const handleMcqMouseDown = (e) => {
+        if (e.button !== 0) return;
+        setIsDraggingMcqCard(true);
+        mcqDragOffsetRef.current = {
+            x: e.clientX - mcqCardPos.x,
+            y: e.clientY - mcqCardPos.y
+        };
+    };
+
+    const handleMcqTouchStart = (e) => {
+        if (e.touches && e.touches[0]) {
+            setIsDraggingMcqCard(true);
+            mcqDragOffsetRef.current = {
+                x: e.touches[0].clientX - mcqCardPos.x,
+                y: e.touches[0].clientY - mcqCardPos.y
+            };
+        }
+    };
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            if (!isDraggingMcqCard) return;
+            let newX = e.clientX - mcqDragOffsetRef.current.x;
+            let newY = e.clientY - mcqDragOffsetRef.current.y;
+
+            const maxRight = Math.max(10, window.innerWidth - 300);
+            const maxBottom = Math.max(10, window.innerHeight - 80);
+            newX = Math.max(10, Math.min(newX, maxRight));
+            newY = Math.max(10, Math.min(newY, maxBottom));
+
+            setMcqCardPos({ x: newX, y: newY });
+        };
+
+        const handleMouseUp = () => {
+            if (isDraggingMcqCard) {
+                setIsDraggingMcqCard(false);
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (!isDraggingMcqCard || !e.touches || !e.touches[0]) return;
+            let newX = e.touches[0].clientX - mcqDragOffsetRef.current.x;
+            let newY = e.touches[0].clientY - mcqDragOffsetRef.current.y;
+
+            const maxRight = Math.max(10, window.innerWidth - 300);
+            const maxBottom = Math.max(10, window.innerHeight - 80);
+            newX = Math.max(10, Math.min(newX, maxRight));
+            newY = Math.max(10, Math.min(newY, maxBottom));
+
+            setMcqCardPos({ x: newX, y: newY });
+        };
+
+        const handleTouchEnd = () => {
+            if (isDraggingMcqCard) {
+                setIsDraggingMcqCard(false);
+            }
+        };
+
+        if (isDraggingMcqCard) {
+            window.addEventListener("mousemove", handleMouseMove);
+            window.addEventListener("mouseup", handleMouseUp);
+            window.addEventListener("touchmove", handleTouchMove);
+            window.addEventListener("touchend", handleTouchEnd);
+        }
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+            window.removeEventListener("touchmove", handleTouchMove);
+            window.removeEventListener("touchend", handleTouchEnd);
+        };
+    }, [isDraggingMcqCard]);
 
     const handleSelfVideoMouseDown = (e) => {
         setIsDraggingSelfVideo(true);
@@ -267,9 +375,20 @@ export default function VideoMeetComponent() {
             if (userMediaStream) {
                 setVideoAvailable(true);
                 setAudioAvailable(true);
+
+                userMediaStream.getAudioTracks().forEach(track => {
+                    track.enabled = Boolean(audio);
+                });
+                userMediaStream.getVideoTracks().forEach(track => {
+                    track.enabled = Boolean(video);
+                });
+
                 window.localStream = userMediaStream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = userMediaStream;
+                }
+                for (let id in connectionsRef.current) {
+                    addTracksToConnection(connectionsRef.current[id]);
                 }
             }
         } catch (err) {
@@ -278,9 +397,17 @@ export default function VideoMeetComponent() {
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 setVideoAvailable(true);
                 setAudioAvailable(false);
+
+                videoStream.getVideoTracks().forEach(track => {
+                    track.enabled = Boolean(video);
+                });
+
                 window.localStream = videoStream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = videoStream;
+                }
+                for (let id in connectionsRef.current) {
+                    addTracksToConnection(connectionsRef.current[id]);
                 }
             } catch (err2) {
                 console.log("Error getting video permission:", err2);
@@ -298,28 +425,55 @@ export default function VideoMeetComponent() {
 
     useEffect(() => {
         getPermission();
+        
+        return () => {
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => {
+                    try {
+                        track.stop();
+                    } catch (e) {}
+                });
+                window.localStream = null;
+            }
+        };
     }, []);
 
     useEffect(() => {
-        if (!askForUsername && localVideoRef.current && window.localStream) {
-            localVideoRef.current.srcObject = window.localStream;
+        if (!askForUsername && video && localVideoRef.current && window.localStream) {
+            if (localVideoRef.current.srcObject !== window.localStream) {
+                localVideoRef.current.srcObject = window.localStream;
+            }
+            localVideoRef.current.play().catch(e => console.log("Local video play error:", e));
         }
-    }, [askForUsername]);
+    }, [askForUsername, video]);
 
     const addTracksToConnection = (peerConn) => {
-        if (window.localStream) {
-            window.localStream.getTracks().forEach(track => {
-                try {
-                    peerConn.addTrack(track, window.localStream);
-                } catch (e) {
-                    console.log("Error adding track to peer connection:", e);
-                }
-            });
+        if (window.localStream && peerConn) {
+            try {
+                const senders = peerConn.getSenders ? peerConn.getSenders() : [];
+                window.localStream.getTracks().forEach(track => {
+                    const existingSender = senders.find(s => s.track && (s.track.id === track.id || s.track.kind === track.kind));
+                    if (existingSender) {
+                        existingSender.replaceTrack(track).catch(e => console.log("replaceTrack error:", e));
+                    } else {
+                        peerConn.addTrack(track, window.localStream);
+                    }
+                });
+            } catch (e) {
+                console.log("Error adding track to peer connection:", e);
+            }
         }
     };
 
     let gotMessageFromServer = (fromId, message) => {
-        var signal = JSON.parse(message);
+        let signal;
+        try {
+            signal = typeof message === 'string' ? JSON.parse(message) : message;
+        } catch (err) {
+            console.error("Invalid WebRTC signal format:", err);
+            return;
+        }
+        if (!signal) return;
 
         if (fromId !== socketIdRef.current && connectionsRef.current[fromId]) {
             if (signal.sdp) {
@@ -365,9 +519,9 @@ export default function VideoMeetComponent() {
         }
     }, [showModal, messages]);
 
-    let addMessage = (data, sender, socketIdSender, timeString) => {
+    let addMessage = (data, sender, socketIdSender, timeString, recipient) => {
         const timestamp = timeString || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setMessages((prev) => [...prev, { data, sender, socketIdSender, timestamp }]);
+        setMessages((prev) => [...prev, { data, sender, socketIdSender, timestamp, recipient: recipient || "everyone" }]);
         if (showModal) {
             setNewMessages(0);
         } else {
@@ -389,7 +543,32 @@ export default function VideoMeetComponent() {
     };
 
     let connectToSocketServer = () => {
-        socketRef.current = io.connect(server_url);
+        socketRef.current = io.connect(server_url, {
+            auth: {
+                token: token || localStorage.getItem("token") || "",
+                username: defaultUsername || username,
+                role: userRole || "student"
+            }
+        });
+
+        socketRef.current.on("socket-error", ({ message }) => {
+            setSnackbarMsg(message || "You are not authorized to perform that action.");
+            setOpenSnackbar(true);
+        });
+
+        socketRef.current.on("connect_error", (error) => {
+            console.error("Socket connection failed:", error.message);
+            setSnackbarMsg(error.message || "Unable to connect to the meeting server. Retrying...");
+            setOpenSnackbar(true);
+
+            if (error.message?.includes("Invalid or inactive token") || error.message?.includes("No token provided")) {
+                socketRef.current.disconnect();
+                localStorage.removeItem("token");
+                localStorage.removeItem("currentUser");
+                localStorage.removeItem("userRole");
+                setTimeout(() => navigate("/authentication"), 1200);
+            }
+        });
 
         socketRef.current.on('signal', gotMessageFromServer);
 
@@ -397,10 +576,20 @@ export default function VideoMeetComponent() {
             socketIdRef.current = socketRef.current.id;
             socketRef.current.emit("join-call", meetingCode, {
                 username: username || `User_${socketRef.current.id?.substring(0, 4)}`,
-                role: userRole
+                role: userRole,
+                profilePic: userData?.profilePic || null,
+                mediaState: { video, audio }
             });
 
             socketRef.current.on("chat-message", addMessage);
+
+            // Listener for peer media state changes (camera/mic toggles)
+            socketRef.current.on("media-state-updated", ({ socketId, mediaState }) => {
+                setPeerMediaStates(prev => ({
+                    ...prev,
+                    [socketId]: mediaState
+                }));
+            });
 
             // Host Media toggle
             socketRef.current.on("host-toggle-media", ({ type, state }) => {
@@ -409,6 +598,9 @@ export default function VideoMeetComponent() {
                         window.localStream.getAudioTracks().forEach(track => track.enabled = state);
                     }
                     setAudio(state);
+                    if (socketRef.current) {
+                        socketRef.current.emit("media-state-change", { video, audio: state });
+                    }
                     setSnackbarMsg(`Trainer/Host ${state ? "unmuted" : "muted"} your microphone.`);
                     setOpenSnackbar(true);
                 } else if (type === "video") {
@@ -416,6 +608,9 @@ export default function VideoMeetComponent() {
                         window.localStream.getVideoTracks().forEach(track => track.enabled = state);
                     }
                     setVideo(state);
+                    if (socketRef.current) {
+                        socketRef.current.emit("media-state-change", { video: state, audio });
+                    }
                     setSnackbarMsg(`Trainer/Host ${state ? "turned on" : "turned off"} your video camera.`);
                     setOpenSnackbar(true);
                 }
@@ -424,6 +619,23 @@ export default function VideoMeetComponent() {
             // Listener for being removed/kicked from meeting by Host
             socketRef.current.on("kicked-from-call", ({ kickedBy, reason }) => {
                 alert(`You have been removed from the meeting by ${kickedBy || 'the Host'}.`);
+                try {
+                    if (window.localStream) {
+                        window.localStream.getTracks().forEach(track => track.stop());
+                    }
+                    for (let id in connectionsRef.current) {
+                        connectionsRef.current[id].close();
+                    }
+                    if (socketRef.current) {
+                        socketRef.current.disconnect();
+                    }
+                } catch (e) {}
+                routeTo("/home");
+            });
+
+            // Listener for meeting ended by Host
+            socketRef.current.on("meeting-ended", ({ reason }) => {
+                alert(reason || "The host has ended the meeting.");
                 try {
                     if (window.localStream) {
                         window.localStream.getTracks().forEach(track => track.stop());
@@ -535,11 +747,21 @@ export default function VideoMeetComponent() {
                 }
                 if (allUsers && Array.isArray(allUsers)) {
                     setRoomParticipants(allUsers);
+                    const initialStates = {};
+                    allUsers.forEach(u => {
+                        if (u.socketId && u.mediaState) {
+                            initialStates[u.socketId] = u.mediaState;
+                        }
+                    });
+                    setPeerMediaStates(prev => ({ ...prev, ...initialStates }));
                 } else if (userMeta) {
                     setRoomParticipants((prev) => [
                         ...prev.filter(p => p.socketId !== id),
-                        { socketId: id, username: userMeta.username || `User_${id.substring(0, 4)}`, role: userMeta.role || "student" }
+                        { socketId: id, username: userMeta.username || `User_${id.substring(0, 4)}`, role: userMeta.role || "student", profilePic: userMeta.profilePic, mediaState: userMeta.mediaState }
                     ]);
+                    if (userMeta.mediaState) {
+                        setPeerMediaStates(prev => ({ ...prev, [id]: userMeta.mediaState }));
+                    }
                 }
 
                 clients.forEach((socketListId) => {
@@ -554,27 +776,43 @@ export default function VideoMeetComponent() {
                             }
                         };
 
-                        const handleRemoteStream = (stream) => {
+                        const handleRemoteStream = (incomingStream, track) => {
                             setVideos(prevVideos => {
                                 const videoExists = prevVideos.find(v => v.socketId === socketListId);
-                                let updated;
                                 if (videoExists) {
-                                    updated = prevVideos.map(v => v.socketId === socketListId ? { ...v, stream: stream } : v);
+                                    const currentStream = videoExists.stream || new MediaStream();
+                                    if (incomingStream) {
+                                        incomingStream.getTracks().forEach(t => {
+                                            if (!currentStream.getTracks().some(existing => existing.id === t.id)) {
+                                                currentStream.addTrack(t);
+                                            }
+                                        });
+                                    }
+                                    if (track && !currentStream.getTracks().some(existing => existing.id === track.id)) {
+                                        currentStream.addTrack(track);
+                                    }
+                                    const updated = prevVideos.map(v => v.socketId === socketListId ? { ...v, stream: currentStream, lastUpdated: Date.now() } : v);
+                                    videoRef.current = updated;
+                                    return updated;
                                 } else {
-                                    updated = [...prevVideos, { socketId: socketListId, stream: stream, autoPlay: true, playsInline: true }];
+                                    let newStream = incomingStream || new MediaStream();
+                                    if (track && !newStream.getTracks().some(existing => existing.id === track.id)) {
+                                        newStream.addTrack(track);
+                                    }
+                                    const updated = [...prevVideos, { socketId: socketListId, stream: newStream, autoPlay: true, playsInline: true, lastUpdated: Date.now() }];
+                                    videoRef.current = updated;
+                                    return updated;
                                 }
-                                videoRef.current = updated;
-                                return updated;
                             });
                         };
 
                         connectionsRef.current[socketListId].ontrack = (event) => {
-                            const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
-                            handleRemoteStream(stream);
+                            const stream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+                            handleRemoteStream(stream, event.track);
                         };
 
                         connectionsRef.current[socketListId].onaddstream = (event) => {
-                            handleRemoteStream(event.stream);
+                            handleRemoteStream(event.stream, null);
                         };
 
                         addTracksToConnection(connectionsRef.current[socketListId]);
@@ -597,8 +835,6 @@ export default function VideoMeetComponent() {
     };
 
     let getMedia = () => {
-        setVideo(videoAvailable);
-        setAudio(audioAvailable);
         connectToSocketServer();
     };
 
@@ -610,24 +846,63 @@ export default function VideoMeetComponent() {
     };
 
     let handleVideo = () => {
+        const nextVideo = !video;
         if (window.localStream) {
             window.localStream.getVideoTracks().forEach(track => {
-                track.enabled = !video;
+                track.enabled = nextVideo;
             });
         }
-        setVideo(!video);
+        setVideo(nextVideo);
+        if (socketRef.current) {
+            socketRef.current.emit("media-state-change", { video: nextVideo, audio });
+        }
+    };
+
+    let stopScreenShare = () => {
+        if (window.localStream) {
+            window.localStream.getTracks().forEach(track => {
+                try {
+                    track.stop();
+                } catch (e) {
+                    console.log("Track stop error:", e);
+                }
+            });
+            window.localStream = null;
+        }
+        setScreen(false);
+        getPermission();
     };
 
     let handleAudio = () => {
+        const nextAudio = !audio;
         if (window.localStream) {
             window.localStream.getAudioTracks().forEach(track => {
-                track.enabled = !audio;
+                track.enabled = nextAudio;
             });
         }
-        setAudio(!audio);
+        setAudio(nextAudio);
+        if (socketRef.current) {
+            socketRef.current.emit("media-state-change", { video, audio: nextAudio });
+        }
     };
 
     let getDisplayMediaSucess = (stream) => {
+        // Bug 1 Fix: Strictly enforce global user audio state on all captured screen share audio tracks (system audio)
+        stream.getAudioTracks().forEach(track => {
+            track.enabled = Boolean(audio);
+        });
+
+        // Preserve & sync microphone audio track if previous stream had it
+        if (window.localStream) {
+            const micAudioTracks = window.localStream.getAudioTracks();
+            micAudioTracks.forEach(micTrack => {
+                micTrack.enabled = Boolean(audio);
+                if (!stream.getAudioTracks().some(t => t.id === micTrack.id)) {
+                    stream.addTrack(micTrack);
+                }
+            });
+        }
+
         window.localStream = stream;
         if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
@@ -635,51 +910,72 @@ export default function VideoMeetComponent() {
 
         const videoTrack = stream.getVideoTracks()[0];
 
+        // Replace tracks on all active WebRTC peer connections
         for (let id in connectionsRef.current) {
             if (id === socketIdRef.current) continue;
-
-            const senders = connectionsRef.current[id].getSenders();
-            const sender = senders.find(s => s.track && s.track.kind === 'video');
-            if (sender) {
-                sender.replaceTrack(videoTrack);
-            } else {
-                connectionsRef.current[id].addTrack(videoTrack, stream);
-            }
+            addTracksToConnection(connectionsRef.current[id]);
         }
 
-        videoTrack.onended = () => {
-            setScreen(false);
-            getPermission();
-        };
-    };
-
-    let getDisplayMedia = () => {
-        if (screen) {
-            if (navigator.mediaDevices.getDisplayMedia) {
-                navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-                    .then(getDisplayMediaSucess)
-                    .catch((e) => console.log(e));
-            }
+        if (videoTrack) {
+            videoTrack.onended = () => {
+                stopScreenShare();
+            };
         }
     };
 
     useEffect(() => {
+        let getDisplayMedia = () => {
+            if (screen) {
+                if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                        .then(getDisplayMediaSucess)
+                        .catch((e) => {
+                            console.log("getDisplayMedia error:", e);
+                            setScreen(false);
+                        });
+                }
+            }
+        };
+
         if (screen !== undefined && screen !== false) {
             getDisplayMedia();
         }
     }, [screen]);
 
     let handleScreen = () => {
-        setScreen(!screen);
+        // Bug 2 Fix: If already sharing, explicitly stop all tracks and revert to camera stream
+        if (screen) {
+            stopScreenShare();
+        } else {
+            setScreen(true);
+        }
     };
 
     let sendMessage = () => {
-        if (!message.trim()) return;
-        socketRef.current.emit("chat-message", message, username || "User");
+        if (!message || !message.trim()) return;
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (socketRef.current) {
+            socketRef.current.emit("chat-message", message.trim(), username || "User", chatRecipient, timestamp);
+        }
         setMessage("");
+        setTimeout(() => {
+            if (chatInputRef.current) {
+                chatInputRef.current.focus();
+            }
+        }, 0);
     };
 
     let handleEndCall = () => {
+        if (autoLeaveTimerRef.current) {
+            clearTimeout(autoLeaveTimerRef.current);
+            autoLeaveTimerRef.current = null;
+        }
+
+        if (socketRef.current && socketIdRef.current === activeHostId) {
+            socketRef.current.emit("end-meeting");
+            // The disconnect cleanup will happen below.
+        }
+
         try {
             if (window.localStream) {
                 window.localStream.getTracks().forEach(track => track.stop());
@@ -694,6 +990,41 @@ export default function VideoMeetComponent() {
 
         routeTo("/home");
     };
+
+    // Auto-leave meeting after 5 minutes if no other participants exist in the room
+    useEffect(() => {
+        if (!askForUsername && socketIdRef.current) {
+            const otherParticipants = roomParticipants.filter(p => p.socketId && p.socketId !== socketIdRef.current);
+            const isAlone = otherParticipants.length === 0 && videos.length === 0;
+
+            if (isAlone) {
+                if (!autoLeaveTimerRef.current) {
+                    setSnackbarMsg("No other participants in meeting. Auto-leaving in 5 minutes if no one joins.");
+                    setOpenSnackbar(true);
+
+                    autoLeaveTimerRef.current = setTimeout(() => {
+                        alert("Auto-leaving meeting: No other participants were present for 5 minutes.");
+                        handleEndCall();
+                    }, 5 * 60 * 1000); // 5 minutes (300,000 ms)
+                }
+            } else {
+                if (autoLeaveTimerRef.current) {
+                    clearTimeout(autoLeaveTimerRef.current);
+                    autoLeaveTimerRef.current = null;
+                    setSnackbarMsg("Participant joined. Auto-leave timer cancelled.");
+                    setOpenSnackbar(true);
+                }
+            }
+        }
+
+        return () => {
+            if (autoLeaveTimerRef.current) {
+                clearTimeout(autoLeaveTimerRef.current);
+                autoLeaveTimerRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [askForUsername, roomParticipants, videos]);
 
     const handleRemoveParticipant = (targetSocketId, targetUsername) => {
         if (!socketRef.current) return;
@@ -742,20 +1073,30 @@ export default function VideoMeetComponent() {
             return;
         }
 
+        let quizId = `quiz_${Date.now()}`;
+
+        // Attempt persistence via API gracefully
         try {
-            let res;
             if (createQuizApi) {
-                res = await createQuizApi({
+                const res = await createQuizApi({
                     meetingId: meetingCode,
                     question: mcqQuestion,
                     options: mcqOptions,
                     correctOptionIndex: Number(mcqCorrectIndex),
                     creatorId: username || "Trainer"
                 });
+                if (res?.quiz?.id || res?.quiz?._id) {
+                    quizId = res.quiz.id || res.quiz._id;
+                }
             }
+        } catch (apiErr) {
+            console.warn("[handleLaunchNewQuiz] API persistence notice (using real-time memory engine):", apiErr);
+        }
 
+        // Guaranteed real-time Socket.IO launch to all students
+        try {
             const quizData = {
-                id: res?.quiz?._id || `quiz_${Date.now()}`,
+                id: quizId,
                 question: mcqQuestion,
                 options: mcqOptions,
                 correctOptionIndex: Number(mcqCorrectIndex)
@@ -769,7 +1110,9 @@ export default function VideoMeetComponent() {
             setMcqModalOpen(false);
             setSnackbarMsg("Live MCQ Quiz launched to all students!");
             setOpenSnackbar(true);
-            fetchQuizRecords();
+            if (typeof fetchQuizRecords === "function") {
+                fetchQuizRecords();
+            }
         } catch (err) {
             console.error(err);
             setSnackbarMsg("Failed to create quiz.");
@@ -803,20 +1146,35 @@ export default function VideoMeetComponent() {
     };
 
     const copyMeetingLink = () => {
-        navigator.clipboard.writeText(window.location.href);
-        setSnackbarMsg("Meeting link copied to clipboard!");
-        setOpenSnackbar(true);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(window.location.href)
+                .then(() => {
+                    setSnackbarMsg("Meeting link copied to clipboard!");
+                    setOpenSnackbar(true);
+                })
+                .catch(() => {
+                    setSnackbarMsg("Meeting URL: " + window.location.href);
+                    setOpenSnackbar(true);
+                });
+        } else {
+            setSnackbarMsg("Meeting URL: " + window.location.href);
+            setOpenSnackbar(true);
+        }
     };
 
     useEffect(() => {
+        const currentConnections = connectionsRef.current;
+        const currentSocket = socketRef.current;
+
         return () => {
-            for (let id in connectionsRef.current) {
+            for (let id in currentConnections) {
                 try {
-                    connectionsRef.current[id].close();
+                    currentConnections[id].close();
                 } catch (e) {}
+                delete currentConnections[id];
             }
-            if (socketRef.current) {
-                socketRef.current.disconnect();
+            if (currentSocket) {
+                currentSocket.disconnect();
             }
         };
     }, []);
@@ -889,17 +1247,138 @@ export default function VideoMeetComponent() {
                             color={userRole === 'trainer' || userRole === 'admin' ? "secondary" : "primary"}
                             sx={{ fontWeight: 'bold' }}
                         />
-                        <div className={styles.lobbyVideoPreview}>
-                            <video ref={localVideoRef} autoPlay muted playsInline></video>
+                        <div className={styles.lobbyVideoPreview} style={{ position: 'relative', background: '#111827', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {video ? (
+                                <video 
+                                    ref={(ref) => {
+                                        localVideoRef.current = ref;
+                                        if (ref && window.localStream) {
+                                            if (ref.srcObject !== window.localStream) {
+                                                ref.srcObject = window.localStream;
+                                            }
+                                            ref.play().catch(err => console.log("Lobby video play error:", err));
+                                        }
+                                    }} 
+                                    autoPlay 
+                                    muted 
+                                    playsInline 
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                ></video>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                                    <Avatar 
+                                        src={userData?.profilePic || ""} 
+                                        sx={{ width: 64, height: 64, bgcolor: "#0e71eb", fontSize: "1.6rem", fontWeight: "bold", border: "3px solid rgba(255,255,255,0.2)" }}
+                                    >
+                                        {(username || "You")[0]?.toUpperCase()}
+                                    </Avatar>
+                                    <Typography variant="caption" sx={{ color: "#94a3b8", fontWeight: 600 }}>
+                                        Camera Off
+                                    </Typography>
+                                </div>
+                            )}
+
+                            {/* Top Right Media Status Pills */}
+                            <div style={{ position: "absolute", top: "10px", right: "10px", display: "flex", gap: "6px", zIndex: 10 }}>
+                                <Chip
+                                    size="small"
+                                    icon={audio ? <MicIcon style={{ color: "#ffffff", fontSize: 14 }} /> : <MicOffIcon style={{ color: "#ffffff", fontSize: 14 }} />}
+                                    label={audio ? "Mic On" : "Muted"}
+                                    sx={{
+                                        bgcolor: audio ? "rgba(16, 185, 129, 0.9)" : "rgba(239, 68, 68, 0.9)",
+                                        color: "#ffffff",
+                                        fontWeight: 700,
+                                        fontSize: "11px",
+                                        height: "24px"
+                                    }}
+                                />
+                                <Chip
+                                    size="small"
+                                    icon={video ? <VideocamIcon style={{ color: "#ffffff", fontSize: 14 }} /> : <VideocamOffIcon style={{ color: "#ffffff", fontSize: 14 }} />}
+                                    label={video ? "Cam On" : "Cam Off"}
+                                    sx={{
+                                        bgcolor: video ? "rgba(14, 113, 235, 0.9)" : "rgba(239, 68, 68, 0.9)",
+                                        color: "#ffffff",
+                                        fontWeight: 700,
+                                        fontSize: "11px",
+                                        height: "24px"
+                                    }}
+                                />
+                            </div>
+
+                            {/* Bottom Center Floating Quick Toggle Action Bar */}
+                            <div style={{
+                                position: "absolute",
+                                bottom: "12px",
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "12px",
+                                background: "rgba(0, 0, 0, 0.65)",
+                                backdropFilter: "blur(8px)",
+                                padding: "6px 14px",
+                                borderRadius: "24px",
+                                border: "1px solid rgba(255, 255, 255, 0.15)",
+                                zIndex: 10
+                            }}>
+                                <Tooltip title={audio ? "Mute Microphone" : "Unmute Microphone"}>
+                                    <IconButton
+                                        onClick={handleAudio}
+                                        size="small"
+                                        sx={{
+                                            color: "#ffffff",
+                                            bgcolor: audio ? "#10b981" : "#ef4444",
+                                            "&:hover": { bgcolor: audio ? "#059669" : "#dc2626" },
+                                            width: 36,
+                                            height: 36
+                                        }}
+                                    >
+                                        {audio ? <MicIcon fontSize="small" /> : <MicOffIcon fontSize="small" />}
+                                    </IconButton>
+                                </Tooltip>
+
+                                <Tooltip title={video ? "Turn Camera Off" : "Turn Camera On"}>
+                                    <IconButton
+                                        onClick={handleVideo}
+                                        size="small"
+                                        sx={{
+                                            color: "#ffffff",
+                                            bgcolor: video ? "#0e71eb" : "#ef4444",
+                                            "&:hover": { bgcolor: video ? "#005ce6" : "#dc2626" },
+                                            width: 36,
+                                            height: 36
+                                        }}
+                                    >
+                                        {video ? <VideocamIcon fontSize="small" /> : <VideocamOffIcon fontSize="small" />}
+                                    </IconButton>
+                                </Tooltip>
+                            </div>
                         </div>
                         <div className={styles.lobbyForm}>
                             <TextField 
                                 id="outlined-basic" 
-                                label="Username / Display Name" 
+                                label={isAuthenticated ? "Authenticated Account Name" : "Username / Display Name"} 
                                 value={username} 
-                                onChange={e => setUsername(e.target.value)} 
+                                onChange={e => {
+                                    if (!isAuthenticated) {
+                                        setUsername(e.target.value);
+                                    }
+                                }} 
+                                disabled={isAuthenticated}
                                 variant="outlined" 
                                 fullWidth
+                                helperText={isAuthenticated ? "🔒 Display name is locked to your account profile. Change it in Profile Settings." : ""}
+                                slotProps={{
+                                    input: {
+                                        readOnly: isAuthenticated,
+                                        startAdornment: isAuthenticated ? (
+                                            <InputAdornment position="start">
+                                                <LockIcon fontSize="small" sx={{ color: '#0e71eb' }} />
+                                            </InputAdornment>
+                                        ) : null
+                                    }
+                                }}
                             />
                             <Button 
                                 variant="contained" 
@@ -1075,6 +1554,11 @@ export default function VideoMeetComponent() {
                                                     <div className={styles.chatSenderRow}>
                                                         <span className={`${styles.chatSender} ${isSelf ? styles.chatSenderSelf : ""}`}>
                                                             {isSelf ? "You" : item.sender}
+                                                            {item.recipient && item.recipient !== "everyone" && (
+                                                                <span style={{ fontSize: "0.7rem", color: "#f59e0b", marginLeft: "6px", fontWeight: "normal" }}>
+                                                                    (To {item.recipient === "host" ? "Host" : item.recipient})
+                                                                </span>
+                                                            )}
                                                         </span>
                                                         <span className={styles.chatTime}>
                                                             {item.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -1119,37 +1603,55 @@ export default function VideoMeetComponent() {
                                         </Select>
                                     </div>
 
-                                    <TextField
-                                        multiline
-                                        maxRows={3}
-                                        size="small"
-                                        fullWidth
-                                        placeholder="Type message here..."
-                                        value={message || ""}
-                                        onChange={(e) => setMessage(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter" && !e.shiftKey) {
-                                                e.preventDefault();
-                                                sendMessage();
-                                            }
-                                        }}
-                                        sx={{
-                                            bgcolor: "#2c2c2e",
-                                            borderRadius: "10px",
-                                            "& .MuiOutlinedInput-root": {
-                                                color: "#ffffff",
-                                                fontSize: "0.9rem",
-                                                "& fieldset": { borderColor: "#3a3a3e" },
-                                                "&:hover fieldset": { borderColor: "#0e71eb" },
-                                                "&.Mui-focused fieldset": { borderColor: "#0e71eb" }
-                                            }
-                                        }}
-                                    />
-
-                                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", px: 0.5 }}>
-                                        <Typography variant="caption" sx={{ color: "#64748b", fontSize: "0.7rem" }}>
-                                            Press Enter to send
-                                        </Typography>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <TextField
+                                            inputRef={chatInputRef}
+                                            multiline
+                                            maxRows={3}
+                                            size="small"
+                                            fullWidth
+                                            placeholder="Type message here..."
+                                            value={message || ""}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    sendMessage();
+                                                }
+                                            }}
+                                            sx={{
+                                                bgcolor: "#2c2c2e",
+                                                borderRadius: "10px",
+                                                "& .MuiOutlinedInput-root": {
+                                                    color: "#ffffff",
+                                                    fontSize: "0.9rem",
+                                                    "& fieldset": { borderColor: "#3a3a3e" },
+                                                    "&:hover fieldset": { borderColor: "#0e71eb" },
+                                                    "&.Mui-focused fieldset": { borderColor: "#0e71eb" }
+                                                }
+                                            }}
+                                        />
+                                        <IconButton
+                                            onClick={sendMessage}
+                                            disabled={!message || !message.trim()}
+                                            sx={{
+                                                bgcolor: message && message.trim() ? "#0e71eb" : "#2c2c2e",
+                                                color: message && message.trim() ? "#ffffff" : "#64748b",
+                                                borderRadius: "10px",
+                                                p: 1.2,
+                                                transition: "all 0.2s ease-in-out",
+                                                "&:hover": {
+                                                    bgcolor: message && message.trim() ? "#0b5ed7" : "#2c2c2e"
+                                                },
+                                                "&.Mui-disabled": {
+                                                    bgcolor: "#242426",
+                                                    color: "#475569",
+                                                    opacity: 0.6
+                                                }
+                                            }}
+                                        >
+                                            <SendIcon sx={{ fontSize: 20 }} />
+                                        </IconButton>
                                     </Box>
                                 </div>
                             </div>
@@ -1301,17 +1803,79 @@ export default function VideoMeetComponent() {
                             overflow: "hidden",
                             border: "2px solid #0e71eb",
                             boxShadow: "0 10px 25px rgba(0, 0, 0, 0.6)",
-                            background: "#000000",
-                            transition: isDraggingSelfVideo ? "none" : "box-shadow 0.2s ease"
+                            background: "#18181b",
+                            transition: isDraggingSelfVideo ? "none" : "box-shadow 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
                         }}
                     >
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            muted
-                            playsInline
-                            style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
-                        ></video>
+                        {video ? (
+                            <video
+                                ref={(ref) => {
+                                    localVideoRef.current = ref;
+                                    if (ref && window.localStream) {
+                                        if (ref.srcObject !== window.localStream) {
+                                            ref.srcObject = window.localStream;
+                                        }
+                                        ref.play().catch((err) => console.log("Local video play error:", err));
+                                    }
+                                }}
+                                autoPlay
+                                muted
+                                playsInline
+                                style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+                            ></video>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                                <Avatar 
+                                    src={userData?.profilePic || ""} 
+                                    sx={{ 
+                                        width: 44, 
+                                        height: 44, 
+                                        bgcolor: "#0e71eb", 
+                                        fontSize: "1.1rem", 
+                                        fontWeight: "bold",
+                                        border: "2px solid rgba(255,255,255,0.25)"
+                                    }}
+                                >
+                                    {(username || "Self")[0]?.toUpperCase()}
+                                </Avatar>
+                            </div>
+                        )}
+
+                        {/* Self Frame Status Icons */}
+                        <div style={{
+                            position: "absolute",
+                            top: "6px",
+                            right: "6px",
+                            display: "flex",
+                            gap: "4px",
+                            zIndex: 5
+                        }}>
+                            {!video && (
+                                <Tooltip title="Camera Off">
+                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <VideocamOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            )}
+                            {!audio ? (
+                                <Tooltip title="Microphone Muted">
+                                    <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <MicOffIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title="Microphone Active">
+                                    <Box sx={{ bgcolor: "rgba(16, 185, 129, 0.9)", borderRadius: "50%", p: "3px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <MicIcon sx={{ fontSize: 13, color: "#ffffff" }} />
+                                    </Box>
+                                </Tooltip>
+                            )}
+                        </div>
+
+                        {/* Self Name Banner */}
                         <div style={{
                             position: "absolute",
                             bottom: "4px",
@@ -1323,55 +1887,192 @@ export default function VideoMeetComponent() {
                             color: "#ffffff",
                             fontSize: "0.68rem",
                             fontWeight: "bold",
-                            pointerEvents: "none"
+                            pointerEvents: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
                         }}>
-                            You ({username || "Self"})
+                            <span>You ({username || "Self"})</span>
                         </div>
                     </div>
 
                     {/* Conference View / Trainer Presentation View */}
                     <div className={`${styles.conferenceView} ${showModal ? styles.conferenceViewShifted : ''}`}>
-                        {videos.map((v) => (
-                            <div key={v.socketId} className={styles.videoWrapper}>
-                                {isTrainerOrAdmin && (
-                                    <div className={styles.hostControlsOverlay}>
-                                        <Tooltip title="Request Student to Enable Video Camera (User Permission)">
-                                            <IconButton 
-                                                size="small" 
-                                                onClick={() => handleRequestStudentCamera(v.socketId)}
-                                                style={{ color: '#38bdf8' }}
+                        {videos.map((v) => {
+                            const participant = roomParticipants.find(p => p.socketId === v.socketId);
+                            const participantName = participant?.username || `User_${v.socketId.substring(0, 4)}`;
+                            const mediaState = peerMediaStates[v.socketId] || { video: true, audio: true };
+                            const isRemoteVideoOn = mediaState.video !== false;
+
+                            return (
+                                <div key={v.socketId} className={styles.videoWrapper} style={{ position: "relative", background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                                    {isTrainerOrAdmin && (
+                                        <div className={styles.hostControlsOverlay}>
+                                            <Tooltip title="Request Student to Enable Video Camera (User Permission)">
+                                                <IconButton 
+                                                    size="small" 
+                                                    onClick={() => handleRequestStudentCamera(v.socketId)}
+                                                    style={{ color: '#38bdf8' }}
+                                                >
+                                                    <VideoCameraFrontIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            {socketIdRef.current === activeHostId && (
+                                                <Tooltip title="Remove Participant">
+                                                    <IconButton 
+                                                        size="small" 
+                                                        onClick={() => handleRemoveParticipant(v.socketId, participantName)}
+                                                        style={{ color: '#ef4444' }}
+                                                    >
+                                                        <PersonRemoveIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Live Stream or Profile Avatar when Camera is Off */}
+                                    {isRemoteVideoOn ? (
+                                        <video
+                                            data-socket={v.socketId}
+                                            ref={ref => {
+                                                if (ref && v.stream) {
+                                                    if (ref.srcObject !== v.stream) {
+                                                        ref.srcObject = v.stream;
+                                                    }
+                                                    ref.play().catch(err => console.log("Remote video play error:", err));
+                                                }
+                                            }}
+                                            autoPlay
+                                            playsInline
+                                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                        >
+                                        </video>
+                                    ) : (
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                                            <Avatar 
+                                                src={participant?.profilePic || ""} 
+                                                sx={{ 
+                                                    width: 72, 
+                                                    height: 72, 
+                                                    bgcolor: "#0e71eb", 
+                                                    fontSize: "1.8rem", 
+                                                    fontWeight: "bold",
+                                                    border: "3px solid rgba(255,255,255,0.15)",
+                                                    boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+                                                }}
                                             >
-                                                <VideoCameraFrontIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
+                                                {participantName[0]?.toUpperCase()}
+                                            </Avatar>
+                                            <Typography variant="subtitle2" sx={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.85rem' }}>
+                                                {participantName} (Camera Off)
+                                            </Typography>
+                                        </div>
+                                    )}
+
+                                    {/* Frame Corner Status Badges (Mic & Video Off Icons) */}
+                                    <div style={{
+                                        position: "absolute",
+                                        top: "10px",
+                                        right: "10px",
+                                        display: "flex",
+                                        gap: "6px",
+                                        zIndex: 5
+                                    }}>
+                                        {mediaState.video === false && (
+                                            <Tooltip title="Camera Off">
+                                                <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <VideocamOffIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
+                                        {mediaState.audio === false ? (
+                                            <Tooltip title="Microphone Muted">
+                                                <Box sx={{ bgcolor: "rgba(239, 68, 68, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <MicOffIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        ) : (
+                                            <Tooltip title="Microphone Active">
+                                                <Box sx={{ bgcolor: "rgba(16, 185, 129, 0.9)", borderRadius: "50%", p: "4px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.4)" }}>
+                                                    <MicIcon sx={{ fontSize: 15, color: "#ffffff" }} />
+                                                </Box>
+                                            </Tooltip>
+                                        )}
                                     </div>
-                                )}
-                                <video
-                                    data-socket={v.socketId}
-                                    ref={ref => {
-                                        if (ref && v.stream) {
-                                            if (ref.srcObject !== v.stream) {
-                                                ref.srcObject = v.stream;
-                                            }
-                                            ref.play().catch(err => console.log("Remote video play error:", err));
-                                        }
-                                    }}
-                                    autoPlay
-                                    playsInline
-                                >
-                                </video>
-                            </div>
-                        ))}
+
+                                    {/* Name Banner at Bottom Left */}
+                                    <div style={{
+                                        position: "absolute",
+                                        bottom: "8px",
+                                        left: "10px",
+                                        background: "rgba(15, 23, 42, 0.75)",
+                                        backdropFilter: "blur(6px)",
+                                        padding: "3px 10px",
+                                        borderRadius: "6px",
+                                        color: "#ffffff",
+                                        fontSize: "0.78rem",
+                                        fontWeight: 600,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "6px",
+                                        pointerEvents: "none"
+                                    }}>
+                                        <span>{participantName}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
 
-                    {/* Student Live MCQ Widget (On-Screen) */}
-                    {activeMcq && (
+                    {/* Student Live MCQ Widget (On-Screen & Draggable & Minimizable) */}
+                    {activeMcq && mcqMinimized && (
+                        <Paper
+                            elevation={8}
+                            onMouseDown={handleMcqMouseDown}
+                            onTouchStart={handleMcqTouchStart}
+                            sx={{
+                                position: 'fixed',
+                                left: `${mcqCardPos.x}px`,
+                                top: `${mcqCardPos.y}px`,
+                                zIndex: 100,
+                                cursor: isDraggingMcqCard ? "grabbing" : "grab",
+                                backgroundColor: '#1c1c20',
+                                border: '2px solid #007afc',
+                                borderRadius: '24px',
+                                px: 2,
+                                py: 0.8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5,
+                                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+                                userSelect: 'none'
+                            }}
+                        >
+                            <DragIndicatorIcon sx={{ color: '#6b7280', fontSize: 18 }} />
+                            <QuizIcon sx={{ color: '#007afc', fontSize: 20 }} />
+                            <Typography variant="subtitle2" sx={{ color: '#ffffff', fontWeight: 700, fontSize: '0.85rem' }}>
+                                Live MCQ ({`00:${mcqTimeLeft < 10 ? '0' + mcqTimeLeft : mcqTimeLeft}`})
+                            </Typography>
+                            <Tooltip title="Expand Quiz View">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setMcqMinimized(false)}
+                                    sx={{ color: '#ffffff', backgroundColor: 'rgba(255,255,255,0.1)', '&:hover': { backgroundColor: 'rgba(255,255,255,0.2)' } }}
+                                >
+                                    <OpenInFullIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </Paper>
+                    )}
+
+                    {activeMcq && !mcqMinimized && (
                         <Paper
                             elevation={12}
                             sx={{
                                 position: 'fixed',
-                                top: 80,
-                                left: 24,
+                                top: `${mcqCardPos.y}px`,
+                                left: `${mcqCardPos.x}px`,
                                 width: 380,
                                 maxHeight: 'calc(100vh - 160px)',
                                 backgroundColor: '#222226',
@@ -1381,27 +2082,34 @@ export default function VideoMeetComponent() {
                                 backdropFilter: 'blur(8px)',
                                 zIndex: 100,
                                 display: 'flex',
-                                flexDirection: 'column'
+                                flexDirection: 'column',
+                                overflow: 'hidden'
                             }}
                         >
-                            {/* Header Bar (Fixed Top) */}
+                            {/* Header Bar (Fixed Top & Draggable) */}
                             <Box
+                                onMouseDown={handleMcqMouseDown}
+                                onTouchStart={handleMcqTouchStart}
                                 sx={{
                                     flexShrink: 0,
-                                    padding: '16px',
+                                    padding: '12px 16px',
                                     borderBottom: '1px solid #2e2e34',
                                     display: 'flex',
                                     justifyContent: 'space-between',
-                                    alignItems: 'center'
+                                    alignItems: 'center',
+                                    cursor: isDraggingMcqCard ? "grabbing" : "grab",
+                                    userSelect: "none",
+                                    backgroundColor: '#1c1c20'
                                 }}
                             >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <DragIndicatorIcon sx={{ color: '#6b7280', fontSize: 18 }} />
                                     <QuizIcon sx={{ color: '#007afc' }} />
-                                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                                    <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.95rem' }}>
                                         Live Classroom MCQ
                                     </Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                                     <Chip 
                                         label={`00:${mcqTimeLeft < 10 ? '0' + mcqTimeLeft : mcqTimeLeft}`}
                                         sx={{ 
@@ -1413,17 +2121,28 @@ export default function VideoMeetComponent() {
                                         }}
                                         size="small"
                                     />
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => {
-                                            setActiveMcq(null);
-                                            setQuizFeedback(null);
-                                            setStudentSelectedOption(null);
-                                        }}
-                                        sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
-                                    >
-                                        <CloseIcon fontSize="small" />
-                                    </IconButton>
+                                    <Tooltip title="Minimize to Floating Badge (Full Video View)">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => setMcqMinimized(true)}
+                                            sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
+                                        >
+                                            <RemoveIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Close Quiz View">
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => {
+                                                setActiveMcq(null);
+                                                setQuizFeedback(null);
+                                                setStudentSelectedOption(null);
+                                            }}
+                                            sx={{ color: '#a1a1a6', '&:hover': { color: '#ffffff' } }}
+                                        >
+                                            <CloseIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
                                 </Box>
                             </Box>
 

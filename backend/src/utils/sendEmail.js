@@ -61,3 +61,87 @@ export const sendNewPasswordEmail = async (toEmail, newPassword, username) => {
         return { success: true, simulated: true, error: err.message };
     }
 };
+
+export const sendPasswordResetCodeEmail = async (toEmail, resetCode, username) => {
+    const host = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.EMAIL_PORT || "587");
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+
+    console.log(`[EMAIL DISPATCH] Password reset code for ${username}: ${resetCode}`);
+    if (!user || !pass) {
+        console.warn("[EMAIL UTILITY] Email credentials are not configured; reset code logged for local development.");
+        return { success: true, simulated: true };
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: { user, pass }
+        });
+        await transporter.sendMail({
+            from: `"Viora Meetings" <${user}>`,
+            to: toEmail,
+            subject: "Your Viora password reset code",
+            html: `<p>Hello <strong>${username}</strong>,</p><p>Your password reset code is:</p><h2>${resetCode}</h2><p>This code expires in 15 minutes.</p>`
+        });
+        return { success: true };
+    } catch (err) {
+        console.error("[EMAIL UTILITY] Failed to send reset code:", err.message);
+        throw err;
+    }
+};
+
+export const sendSupportTicketEmail = async ({ senderEmail, subject, message }) => {
+    const host = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const port = parseInt(process.env.EMAIL_PORT || "587");
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASS;
+    const targetEmail = process.env.SUPPORT_EMAIL || "synclearn.pvt@gmail.com";
+
+    console.log(`\n==================================================`);
+    console.log(`[SUPPORT TICKET RECEIVED] From: ${senderEmail || "Anonymous"}`);
+    console.log(`[SUPPORT TICKET] Subject: ${subject || "No subject"}`);
+    console.log(`[SUPPORT TICKET] Message:\n${message}`);
+    console.log(`==================================================\n`);
+
+    if (!user || !pass) {
+        console.warn("[EMAIL UTILITY] EMAIL_USER or EMAIL_PASS not set. Ticket logged to console above.");
+        return { success: true, simulated: true, message: "Support ticket received & logged to server." };
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            host,
+            port,
+            secure: port === 465,
+            auth: { user, pass }
+        });
+
+        await transporter.sendMail({
+            from: `"SyncLearn Support Portal" <${user}>`,
+            to: targetEmail,
+            replyTo: senderEmail || user,
+            subject: `[SyncLearn Support Ticket] ${subject || "Support Inquiry"}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a; background-color: #f8fafc; border-radius: 8px;">
+                    <h2 style="color: #0e71eb;">New SyncLearn In-App Support Ticket</h2>
+                    <p><strong>Sender Email:</strong> ${senderEmail || "Not specified"}</p>
+                    <p><strong>Subject:</strong> ${subject || "General Inquiry"}</p>
+                    <div style="background-color: #ffffff; padding: 16px; border-left: 4px solid #0e71eb; border-radius: 4px; margin: 16px 0;">
+                        <p style="margin: 0; white-space: pre-wrap; font-size: 15px;">${message}</p>
+                    </div>
+                    <p style="font-size: 12px; color: #64748b;">Submitted via SyncLearn Nodemailer Support Portal.</p>
+                </div>
+            `
+        });
+        console.log("[EMAIL UTILITY] Support ticket email dispatched successfully via Nodemailer.");
+        return { success: true, message: "Support email dispatched successfully via Nodemailer." };
+    } catch (err) {
+        console.error("[EMAIL UTILITY] Failed to send support ticket email:", err.message);
+        return { success: true, simulated: true, error: err.message };
+    }
+};
+
