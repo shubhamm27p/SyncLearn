@@ -53,6 +53,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import CheckIcon from '@mui/icons-material/Check';
 import QuizIcon from '@mui/icons-material/Quiz';
 import SchoolIcon from '@mui/icons-material/School';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -942,6 +943,19 @@ export default function VideoMeetComponent() {
         }
     }, [screen]);
 
+    const handleFullscreen = (elementId) => {
+        const elem = document.getElementById(elementId);
+        if (elem) {
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        }
+    };
+
     let handleScreen = () => {
         // Bug 2 Fix: If already sharing, explicitly stop all tracks and revert to camera stream
         if (screen) {
@@ -1265,7 +1279,7 @@ export default function VideoMeetComponent() {
                                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 ></video>
                             ) : (
-                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", height: "100%" }}>
                                     <Avatar 
                                         src={userData?.profilePic || ""} 
                                         sx={{ width: 64, height: 64, bgcolor: "#0e71eb", fontSize: "1.6rem", fontWeight: "bold", border: "3px solid rgba(255,255,255,0.2)" }}
@@ -1788,6 +1802,7 @@ export default function VideoMeetComponent() {
 
                     {/* Movable & Scaled Down Self Video Card */}
                     <div
+                        id="video-wrapper-self"
                         onMouseDown={handleSelfVideoMouseDown}
                         onTouchStart={handleSelfVideoTouchStart}
                         style={{
@@ -1827,7 +1842,7 @@ export default function VideoMeetComponent() {
                                 style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
                             ></video>
                         ) : (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
                                 <Avatar 
                                     src={userData?.profilePic || ""} 
                                     sx={{ 
@@ -1875,6 +1890,20 @@ export default function VideoMeetComponent() {
                             )}
                         </div>
 
+                        {/* Fullscreen Button for Self */}
+                        <div style={{
+                            position: "absolute",
+                            bottom: "4px",
+                            right: "6px",
+                            zIndex: 5
+                        }}>
+                            <Tooltip title="Full Screen">
+                                <IconButton size="small" onClick={() => handleFullscreen("video-wrapper-self")} sx={{ color: "#ffffff", bgcolor: "rgba(0,0,0,0.5)", "&:hover": { bgcolor: "rgba(0,0,0,0.7)" } }}>
+                                    <FullscreenIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </div>
+
                         {/* Self Name Banner */}
                         <div style={{
                             position: "absolute",
@@ -1905,7 +1934,7 @@ export default function VideoMeetComponent() {
                             const isRemoteVideoOn = mediaState.video !== false;
 
                             return (
-                                <div key={v.socketId} className={styles.videoWrapper} style={{ position: "relative", background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                                <div id={`video-wrapper-${v.socketId}`} key={v.socketId} className={styles.videoWrapper} style={{ position: "relative", background: "#18181b", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                                     {isTrainerOrAdmin && (
                                         <div className={styles.hostControlsOverlay}>
                                             <Tooltip title="Request Student to Enable Video Camera (User Permission)">
@@ -1949,7 +1978,7 @@ export default function VideoMeetComponent() {
                                         >
                                         </video>
                                     ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+                                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", width: "100%", height: "100%" }}>
                                             <Avatar 
                                                 src={participant?.profilePic || ""} 
                                                 sx={{ 
@@ -1999,6 +2028,20 @@ export default function VideoMeetComponent() {
                                                 </Box>
                                             </Tooltip>
                                         )}
+                                    </div>
+
+                                    {/* Fullscreen Button for Remote Video */}
+                                    <div style={{
+                                        position: "absolute",
+                                        bottom: "10px",
+                                        right: "10px",
+                                        zIndex: 5
+                                    }}>
+                                        <Tooltip title="Full Screen">
+                                            <IconButton size="small" onClick={() => handleFullscreen(`video-wrapper-${v.socketId}`)} sx={{ color: "#ffffff", bgcolor: "rgba(0,0,0,0.5)", "&:hover": { bgcolor: "rgba(0,0,0,0.7)" } }}>
+                                                <FullscreenIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                     </div>
 
                                     {/* Name Banner at Bottom Left */}

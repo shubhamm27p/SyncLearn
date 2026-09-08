@@ -97,9 +97,9 @@
 
 .videoWrapper {
     position: relative;
-    width: 440px;
+    flex: 1 1 320px;
     max-width: 90vw;
-    height: 280px;
+    aspect-ratio: 16 / 9;
     border-radius: 14px;
     overflow: hidden;
     background: #1a1a1a;
