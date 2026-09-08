@@ -138,6 +138,10 @@ const login = async (req, res) => {
             return res.status(404).json({ message: "User Not Found!" });
         }
 
+        if (user.is_active === false) {
+            return res.status(403).json({ message: "Your account has been disabled." });
+        }
+
         if (user.role !== 'admin' && siteOnline === false) {
             return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
@@ -357,6 +361,9 @@ const googleLogin = async (req, res) => {
             if (error) throw error;
             user = newUser;
         } else {
+            if (user.is_active === false) {
+                return res.status(403).json({ message: "Your account has been disabled." });
+            }
             const updateData = { token: sessionToken };
             if (googleId) updateData.google_id = googleId;
             if (name && !user.name) updateData.name = name;
