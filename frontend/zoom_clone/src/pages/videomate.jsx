@@ -985,7 +985,7 @@ export default function VideoMeetComponent() {
             autoLeaveTimerRef.current = null;
         }
 
-        if (socketRef.current && socketIdRef.current === activeHostId) {
+        if (socketRef.current && socketIdRef.current === hostId) {
             socketRef.current.emit("end-meeting");
             // The disconnect cleanup will happen below.
         }
@@ -1957,7 +1957,7 @@ export default function VideoMeetComponent() {
                                                     <VideoCameraFrontIcon fontSize="small" />
                                                 </IconButton>
                                             </Tooltip>
-                                            {socketIdRef.current === activeHostId && (
+                                            {socketIdRef.current === hostId && (
                                                 <Tooltip title="Remove Participant">
                                                     <IconButton 
                                                         size="small" 
