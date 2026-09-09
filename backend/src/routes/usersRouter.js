@@ -23,7 +23,7 @@ import {
     ,getSiteStatus, updateSiteStatus, submitSupportTicket
 } from "../controllers/usersController.js";
 import { authLimiter } from "../middlewares/rateLimiter.js";
-import { authMiddleware, adminMiddleware } from "../middlewares/authMiddleware.js";
+import { authMiddleware, adminMiddleware, trainerOrAdminMiddleware } from "../middlewares/authMiddleware.js";
 import { getActiveRooms } from "../controllers/socketmanager.js";
  
 const router = Router();
@@ -40,15 +40,17 @@ router.route("/support/submit").post(authLimiter, submitSupportTicket);
 // Public status read is needed for the site availability page.
 router.route("/site-status").get(getSiteStatus);
 
-// Admin routes require a valid server-side session and an admin/trainer role.
+// Admin routes require a valid server-side session and strictly admin role.
 router.route("/admin/users").get(authMiddleware, adminMiddleware, getAllUsers);
 router.route("/admin/users/:userId")
     .patch(authMiddleware, adminMiddleware, updateUserRoleOrStatus)
     .delete(authMiddleware, adminMiddleware, deleteUser);
-router.route("/admin/media-permissions/:sessionId")
-    .get(authMiddleware, adminMiddleware, getMediaPermissions)
-    .post(authMiddleware, adminMiddleware, updateMediaPermission);
 router.route("/site-status").put(authMiddleware, adminMiddleware, updateSiteStatus);
+
+// Meeting management routes require trainer or admin role.
+router.route("/admin/media-permissions/:sessionId")
+    .get(authMiddleware, trainerOrAdminMiddleware, getMediaPermissions)
+    .post(authMiddleware, trainerOrAdminMiddleware, updateMediaPermission);
 
 // Protected Routes (Require Token Authorization)
 router.use(authMiddleware);

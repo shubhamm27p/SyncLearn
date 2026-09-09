@@ -65,12 +65,6 @@ const DashboardLayout = () => {
       active: location.pathname.startsWith('/student/results')
     },
     {
-      label: 'Meeting History',
-      path: '/history',
-      icon: <RestoreIcon />,
-      active: location.pathname === '/history'
-    },
-    {
       label: 'Main Dashboard',
       path: '/home',
       icon: <HomeIcon />,

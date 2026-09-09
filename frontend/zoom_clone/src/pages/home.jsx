@@ -121,13 +121,6 @@ function HomeComponent() {
                             </Button>
                         )}
                         <Button 
-                            startIcon={<RestoreIcon />} 
-                            onClick={() => navigate('/history')}
-                            sx={{ color: "#344054", fontWeight: 500, fontSize: "14px", textTransform: "none" }}
-                        >
-                            History
-                        </Button>      
-                        <Button 
                             startIcon={<SettingsIcon />} 
                             endIcon={<KeyboardArrowDownIcon />}
                             onClick={(e) => setSettingsAnchorEl(e.currentTarget)}
@@ -238,12 +231,7 @@ function HomeComponent() {
                             </ListItemButton>
                         </ListItem>
                     )}
-                    <ListItem disablePadding sx={{ mb: 1 }}>
-                        <ListItemButton onClick={() => { setMobileOpen(false); navigate('/history'); }} sx={{ borderRadius: "8px" }}>
-                            <ListItemIcon><RestoreIcon sx={{ color: "#344054" }} /></ListItemIcon>
-                            <ListItemText primary="History" primaryTypographyProps={{ fontWeight: 600 }} />
-                        </ListItemButton>
-                    </ListItem>
+
                     <ListItem disablePadding sx={{ mb: 1 }}>
                         <ListItemButton onClick={() => { setMobileOpen(false); navigate('/profile'); }} sx={{ borderRadius: "8px" }}>
                             <ListItemIcon><PersonIcon sx={{ color: "#344054" }} /></ListItemIcon>
@@ -313,27 +301,29 @@ function HomeComponent() {
                             {isAdmin ? (activeUser?.role === 'trainer' ? "Trainer Portal" : "Manage Tests") : "Student Portal"}
                         </Button>
 
-                        <Button 
-                            onClick={handleCreateNewMeeting}
-                            variant="contained"
-                            size="large"
-                            startIcon={<AddIcon />}
-                            sx={{ 
-                                backgroundColor: "#10b981", 
-                                "&:hover": { backgroundColor: "#059669" },
-                                textTransform: "none", 
-                                fontSize: "0.95rem", 
-                                fontWeight: 600, 
-                                py: 1.2, 
-                                px: 3, 
-                                borderRadius: "8px",
-                                width: "100%",
-                                mb: 2.5,
-                                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
-                            }}
-                        >
-                            Create Meeting
-                        </Button>
+                        {isAdmin && (
+                            <Button 
+                                onClick={handleCreateNewMeeting}
+                                variant="contained"
+                                size="large"
+                                startIcon={<AddIcon />}
+                                sx={{ 
+                                    backgroundColor: "#10b981", 
+                                    "&:hover": { backgroundColor: "#059669" },
+                                    textTransform: "none", 
+                                    fontSize: "0.95rem", 
+                                    fontWeight: 600, 
+                                    py: 1.2, 
+                                    px: 3, 
+                                    borderRadius: "8px",
+                                    width: "100%",
+                                    mb: 2.5,
+                                    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)"
+                                }}
+                            >
+                                Create Meeting
+                            </Button>
+                        )}
 
                         {/* Meeting Code Input Group */}
                         <Box sx={{ display: "flex", gap: 1.5, alignItems: 'flex-start' }}>

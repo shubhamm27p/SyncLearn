@@ -261,30 +261,8 @@ const getUserHistory = async (req, res) => {
 };
 
 const addToHistory = async (req, res) => {
-    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.body?.token;
-    const { meeting_code } = req.body || {};
-
-    if ((!token && !req.user) || !meeting_code) {
-        return res.status(400).json({ message: "Token and meeting code are required" });
-    }
-
-    try {
-        const username = req.user?.username || req.body?.username;
-        if (!username) {
-            return res.status(404).json({ message: "User Not Found" });
-        }
-
-        const { error } = await supabase.from('meetings').insert([{
-            user_id: username,
-            meeting_id: meeting_code
-        }]);
-        if (error) throw error;
-
-        return res.status(201).json({ message: "Added code to History" });
-    } catch (e) {
-        console.error("addToHistory error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
-    }
+    // History tracking disabled per user request
+    return res.status(201).json({ message: "History tracking is disabled" });
 };
 
 const clearUserHistory = async (req, res) => {

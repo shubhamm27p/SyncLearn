@@ -1697,27 +1697,6 @@ export default function VideoMeetComponent() {
 
                                 {/* Docked Bottom Input Area */}
                                 <div className={styles.chattingAreaDocked}>
-                                    <div className={styles.chatRecipientBar}>
-                                        <Typography variant="caption" sx={{ color: "#94a3b8", fontWeight: 600 }}>
-                                            To:
-                                        </Typography>
-                                        <Select
-                                            value={chatRecipient}
-                                            onChange={(e) => setChatRecipient(e.target.value)}
-                                            size="small"
-                                            variant="standard"
-                                            disableUnderline
-                                            sx={{
-                                                color: "#38bdf8",
-                                                fontWeight: "bold",
-                                                fontSize: "0.8rem",
-                                                ".MuiSelect-icon": { color: "#38bdf8" }
-                                            }}
-                                        >
-                                            <MenuItem value="everyone">Everyone</MenuItem>
-                                            <MenuItem value="host">Host / Trainer Only</MenuItem>
-                                        </Select>
-                                    </div>
 
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                         <TextField

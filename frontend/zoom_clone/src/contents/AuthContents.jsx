@@ -65,6 +65,9 @@ export const AuthProvider = ({children}) => {
                 password: password
             });
             if (request.status === 200) {
+                // Clear any stale admin authentication state for standard logins
+                sessionStorage.removeItem("admin_authenticated");
+                
                 localStorage.setItem("token", request.data.token);
                 if (request.data.user) {
                     localStorage.setItem("userRole", request.data.user.role || "student");
@@ -127,6 +130,9 @@ export const AuthProvider = ({children}) => {
                 role
             });
             if (request.status === 200) {
+                // Clear any stale admin authentication state for standard logins
+                sessionStorage.removeItem("admin_authenticated");
+                
                 localStorage.setItem("token", request.data.token);
                 if (request.data.user) {
                     localStorage.setItem("userRole", request.data.user.role || "student");

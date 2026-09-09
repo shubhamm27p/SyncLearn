@@ -10,7 +10,6 @@ import bcrypt from "bcrypt";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
-import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Load environment variables from .env if present
 try {
@@ -106,6 +105,9 @@ app.use(cors({
     credentials: true
 }));
 
+import mcqModule from './mcq/server.js';
+const { mcqApp, initMCQDB } = mcqModule;
+
 // API Gateway to MCQ Backend
 app.use(
     "/api/mcq",
@@ -116,13 +118,7 @@ app.use(
         req.headers['x-gateway-secret'] = process.env.GATEWAY_SECRET || "super_secret_gateway_key_2026";
         next();
     },
-    createProxyMiddleware({
-        target: process.env.MCQ_BACKEND_URL || 'http://localhost:5000',
-        changeOrigin: true,
-        pathRewrite: {
-            '^/api/mcq': '/api',
-        }
-    })
+    mcqApp
 );
 
 app.use(express.json({limit: "49kb"}));
@@ -148,6 +144,10 @@ if (process.env.NODE_ENV !== 'test') {
             if (error) throw error;
             console.log("Supabase connection established successfully.");
             await ensureAdminAccount();
+            
+            // Initialize MCQ DB (MongoDB)
+            await initMCQDB();
+            console.log("MCQ Engine initialized successfully.");
         } catch (err) {
             console.error("Supabase Connection Error:", err.message);
         }

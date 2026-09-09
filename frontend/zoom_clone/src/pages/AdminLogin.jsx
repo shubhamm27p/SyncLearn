@@ -35,7 +35,7 @@ export default function AdminLogin() {
     try {
       const message = await authLogin(username, password);
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-      if (!['admin', 'trainer'].includes(currentUser?.role)) {
+      if (currentUser?.role !== 'admin') {
         localStorage.removeItem('token');
         localStorage.removeItem('currentUser');
         throw new Error('This account does not have administrator access.');

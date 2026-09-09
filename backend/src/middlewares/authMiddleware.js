@@ -57,8 +57,15 @@ export const authMiddleware = async (req, res, next) => {
 };
 
 export const adminMiddleware = (req, res, next) => {
-    if (!req.user || !['admin', 'trainer'].includes(req.user.role)) {
+    if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Forbidden: Administrator access required' });
+    }
+    next();
+};
+
+export const trainerOrAdminMiddleware = (req, res, next) => {
+    if (!req.user || !['admin', 'trainer'].includes(req.user.role)) {
+        return res.status(403).json({ message: 'Forbidden: Trainer or Administrator access required' });
     }
     next();
 };
