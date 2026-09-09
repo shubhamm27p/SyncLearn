@@ -99,16 +99,16 @@ export default function LandingPage() {
                 sx={{
                     position: "sticky",
                     top: 0,
-                    zIndex: 1100,
-                    backgroundColor: "rgba(255, 255, 255, 0.85)",
-                    backdropFilter: "blur(12px)",
+                    zIndex: 1200,
+                    backgroundColor: "#ffffff",
                     borderBottom: "1px solid #f1f5f9",
                     px: { xs: 2.5, md: 6 },
                     py: 1.8,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    transition: "all 0.2s ease"
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)"
                 }}
             >
                 {/* Left Brand Logo */}

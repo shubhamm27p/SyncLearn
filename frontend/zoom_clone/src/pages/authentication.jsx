@@ -83,6 +83,11 @@ const inputSx = {
       '&::placeholder': {
         color: '#9ca3af',
         opacity: 1
+      },
+      '&:-webkit-autofill': {
+        WebkitBoxShadow: '0 0 0 1000px #f9fafb inset !important',
+        WebkitTextFillColor: '#111827 !important',
+        borderRadius: '8px'
       }
     }
   }
