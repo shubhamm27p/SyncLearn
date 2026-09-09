@@ -487,14 +487,12 @@ export default function Authentication() {
                     name="resetToken"
                     value={resetToken}
                     onChange={(e) => setResetToken(e.target.value)}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <KeyIcon sx={{ color: '#0e71eb', fontSize: 20 }} />
-                          </InputAdornment>
-                        ),
-                      },
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <KeyIcon sx={{ color: '#0e71eb', fontSize: 20 }} />
+                        </InputAdornment>
+                      ),
                     }}
                     sx={inputSx}
                     error={!!fieldErrors.resetToken}
@@ -514,22 +512,20 @@ export default function Authentication() {
                     id="newPassword"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    slotProps={{
-                      input: {
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              aria-label="toggle password visibility"
-                              onClick={handleClickShowPassword}
-                              onMouseDown={handleMouseDownPassword}
-                              edge="end"
-                              sx={{ color: '#6b7280' }}
-                            >
-                              {showPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      },
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={handleClickShowPassword}
+                            onMouseDown={handleMouseDownPassword}
+                            edge="end"
+                            sx={{ color: '#6b7280' }}
+                          >
+                            {showPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
                     }}
                     sx={inputSx}
                     error={!!fieldErrors.newPassword}
@@ -554,22 +550,20 @@ export default function Authentication() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            aria-label="toggle password visibility"
-                            onClick={handleClickShowPassword}
-                            onMouseDown={handleMouseDownPassword}
-                            edge="end"
-                            sx={{ color: '#6b7280' }}
-                          >
-                            {showPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleClickShowPassword}
+                          onMouseDown={handleMouseDownPassword}
+                          edge="end"
+                          sx={{ color: '#6b7280' }}
+                        >
+                          {showPassword ? <VisibilityOff sx={{ fontSize: 20 }} /> : <Visibility sx={{ fontSize: 20 }} />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
                   sx={inputSx}
                   error={!!fieldErrors.password}
