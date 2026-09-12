@@ -94,16 +94,16 @@ export const sendPasswordResetCodeEmail = async (toEmail, resetCode, username) =
     }
 };
 
-export const sendSupportTicketEmail = async ({ senderEmail, subject, message }) => {
+export const sendSupportTicketEmail = async ({ name, senderEmail, subject, message }) => {
     const host = process.env.EMAIL_HOST || "smtp.gmail.com";
     const port = parseInt(process.env.EMAIL_PORT || "587");
     const user = process.env.EMAIL_USER;
     const pass = process.env.EMAIL_PASS;
-    const targetEmail = process.env.SUPPORT_EMAIL || "synclearn.pvt@gmail.com";
+    const targetEmail = "synclearn.pvt@gmail.com";
 
     console.log(`\n==================================================`);
-    console.log(`[SUPPORT TICKET RECEIVED] From: ${senderEmail || "Anonymous"}`);
-    console.log(`[SUPPORT TICKET] Subject: ${subject || "No subject"}`);
+    console.log(`[SUPPORT TICKET RECEIVED] From: ${name} <${senderEmail}>`);
+    console.log(`[SUPPORT TICKET] Subject: ${subject}`);
     console.log(`[SUPPORT TICKET] Message:\n${message}`);
     console.log(`==================================================\n`);
 
@@ -123,13 +123,14 @@ export const sendSupportTicketEmail = async ({ senderEmail, subject, message }) 
         await transporter.sendMail({
             from: `"SyncLearn Support Portal" <${user}>`,
             to: targetEmail,
-            replyTo: senderEmail || user,
-            subject: `[SyncLearn Support Ticket] ${subject || "Support Inquiry"}`,
+            replyTo: senderEmail,
+            subject: `[SyncLearn Support Ticket] ${subject}`,
             html: `
                 <div style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a; background-color: #f8fafc; border-radius: 8px;">
                     <h2 style="color: #0e71eb;">New SyncLearn In-App Support Ticket</h2>
-                    <p><strong>Sender Email:</strong> ${senderEmail || "Not specified"}</p>
-                    <p><strong>Subject:</strong> ${subject || "General Inquiry"}</p>
+                    <p><strong>Name:</strong> ${name}</p>
+                    <p><strong>Sender Email:</strong> ${senderEmail}</p>
+                    <p><strong>Subject:</strong> ${subject}</p>
                     <div style="background-color: #ffffff; padding: 16px; border-left: 4px solid #0e71eb; border-radius: 4px; margin: 16px 0;">
                         <p style="margin: 0; white-space: pre-wrap; font-size: 15px;">${message}</p>
                     </div>

@@ -30,7 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn } from '@clerk/clerk-react';
+import { useSignIn, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const GitHubIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }} fill="currentColor">
@@ -123,7 +123,7 @@ export default function Authentication() {
     try {
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: '/auth',
+        redirectUrl: '/auth/sso-callback',
         redirectUrlComplete: '/home'
       });
     } catch (err) {
@@ -132,7 +132,11 @@ export default function Authentication() {
     }
   };
 
-  // 0: Log In, 1: Sign Up, 2: Forgot Password, 3: Reset Password
+  if (location.pathname.includes('/sso-callback')) {
+    return <AuthenticateWithRedirectCallback />;
+  }
+
+  // 0: Log In, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
   const [open, setOpen] = useState(false);
 

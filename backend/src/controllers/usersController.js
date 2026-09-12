@@ -802,14 +802,24 @@ const generateRtcTokenController = async (req, res) => {
 
 export const submitSupportTicket = async (req, res) => {
     try {
-        const { senderEmail, subject, message } = req.body;
+        const { name, senderEmail, subject, message } = req.body;
         if (!message || !message.trim()) {
             return res.status(httpStatus.BAD_REQUEST).json({ message: "Message content is required." });
         }
+        if (!senderEmail || !senderEmail.trim()) {
+            return res.status(httpStatus.BAD_REQUEST).json({ message: "Email is required." });
+        }
+        if (!name || !name.trim()) {
+            return res.status(httpStatus.BAD_REQUEST).json({ message: "Name is required." });
+        }
+        if (!subject || !subject.trim()) {
+            return res.status(httpStatus.BAD_REQUEST).json({ message: "Subject is required." });
+        }
 
         const result = await sendSupportTicketEmail({
-            senderEmail: senderEmail || req.user?.username || "Anonymous User",
-            subject: subject || "SyncLearn Support Request",
+            name: name.trim(),
+            senderEmail: senderEmail.trim(),
+            subject: subject.trim(),
             message: message.trim()
         });
 
