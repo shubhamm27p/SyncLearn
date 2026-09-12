@@ -1,5 +1,9 @@
 const SiteSetting = require('../models/SiteSetting');
 
+let cachedSiteStatus = null;
+let cachedAt = 0;
+const SITE_STATUS_TTL_MS = 5000;
+
 const getSiteSetting = async () => SiteSetting.findOneAndUpdate(
   { key: 'site' },
   { $setOnInsert: { key: 'site', isOnline: true } },
@@ -26,6 +30,8 @@ exports.updateStatus = async (req, res, next) => {
       { $set: { isOnline: req.body.isOnline } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
+    cachedSiteStatus = setting.isOnline;
+    cachedAt = Date.now();
 
     return res.json({
       success: true,
@@ -38,6 +44,12 @@ exports.updateStatus = async (req, res, next) => {
 };
 
 exports.isSiteOnline = async () => {
+  if (cachedSiteStatus !== null && Date.now() - cachedAt < SITE_STATUS_TTL_MS) {
+    return cachedSiteStatus;
+  }
+
   const setting = await getSiteSetting();
+  cachedSiteStatus = setting.isOnline;
+  cachedAt = Date.now();
   return setting.isOnline;
 };

@@ -21,6 +21,7 @@ const ViewCodingSubmissions = () => {
   const [loading, setLoading] = useState(true);
   const [testTitle, setTestTitle] = useState('');
   const [expandedId, setExpandedId] = useState(null);
+  const [submissionDetails, setSubmissionDetails] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -38,6 +39,19 @@ const ViewCodingSubmissions = () => {
       toast.error('Failed to load submissions');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleSubmission = async (submission) => {
+    const isExpanded = expandedId === submission._id;
+    setExpandedId(isExpanded ? null : submission._id);
+    if (!isExpanded && !submissionDetails[submission._id]) {
+      try {
+        const res = await API.get(`/coding/submissions/${submission._id}`);
+        setSubmissionDetails((current) => ({ ...current, [submission._id]: res.data.data }));
+      } catch {
+        toast.error('Failed to load submission details');
+      }
     }
   };
 
@@ -110,6 +124,7 @@ const ViewCodingSubmissions = () => {
                   <div style={{ borderTop: '1px solid var(--border-color)', padding: '16px 24px' }}>
                     {subs.map((sub) => {
                       const badge = STATUS_BADGE[sub.status] || STATUS_BADGE.pending;
+                      const details = submissionDetails[sub._id] || sub;
                       return (
                         <div key={sub._id} style={{ background: 'var(--bg-hover)', borderRadius: '10px', padding: '16px', marginBottom: '10px', border: '1px solid var(--border-color)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
@@ -127,9 +142,9 @@ const ViewCodingSubmissions = () => {
                             </div>
                           </div>
 
-                          {sub.testCaseResults && sub.testCaseResults.length > 0 && (
+                          {details.testCaseResults && details.testCaseResults.length > 0 && (
                             <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                              {sub.testCaseResults.map((tcr, idx) => (
+                              {details.testCaseResults.map((tcr, idx) => (
                                 <span key={idx} style={{ width: '24px', height: '24px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', background: tcr.passed ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: tcr.passed ? '#10b981' : '#ef4444' }}>
                                   {tcr.passed ? '✓' : '✗'}
                                 </span>
@@ -137,10 +152,14 @@ const ViewCodingSubmissions = () => {
                             </div>
                           )}
 
-                          <details>
+                          <details onToggle={(event) => {
+                            if (event.currentTarget.open && !submissionDetails[sub._id]) {
+                              toggleSubmission(sub);
+                            }
+                          }}>
                             <summary style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer', marginBottom: '6px' }}>View Source Code</summary>
                             <pre style={{ background: theme === 'light' ? '#f8faff' : '#1a1a1d', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '14px', fontSize: '12px', fontFamily: "'Consolas', monospace", color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '300px', overflow: 'auto', margin: 0 }}>
-                              {sub.sourceCode}
+                              {submissionDetails[sub._id]?.sourceCode || 'Loading source code...'}
                             </pre>
                           </details>
                         </div>

@@ -141,6 +141,7 @@ exports.submitTest = async (req, res, next) => {
 exports.getMyResults = async (req, res, next) => {
   try {
     const results = await Result.find({ studentId: req.user._id })
+      .select('testId score totalMarks percentage correctAnswers incorrectAnswers unattempted status autoSubmitted submittedAt timeTaken attemptNumber')
       .populate('testId', 'title subject totalMarks duration')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: results });
@@ -150,25 +151,32 @@ exports.getMyResults = async (req, res, next) => {
 /** @route GET /api/results/test/:testId */
 exports.getResultsByTest = async (req, res, next) => {
   try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
     const test = await Test.findById(req.params.testId).select('title subject totalMarks passingPercentage');
     if (!test) return res.status(404).json({ success: false, message: 'Test not found' });
 
     const results = await Result.find({ testId: req.params.testId })
+      .select('studentId testId score totalMarks percentage correctAnswers incorrectAnswers unattempted status autoSubmitted submittedAt timeTaken attemptNumber')
       .populate('studentId', 'name email rollNumber department')
-      .sort({ score: -1 });
+      .sort({ score: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    const total = await Result.countDocuments({ testId: req.params.testId });
 
-    const resultsWithViolations = await Promise.all(
-      results.map(async (r) => {
-        const rObj = r.toObject();
-        rObj.violationCount = await Violation.countDocuments({
-          studentId: r.studentId?._id,
-          testId: req.params.testId,
-        });
-        return rObj;
-      })
-    );
+    const studentIds = results.map((result) => result.studentId?._id).filter(Boolean);
+    const violationCounts = await Violation.aggregate([
+      { $match: { testId: test._id, studentId: { $in: studentIds } } },
+      { $group: { _id: '$studentId', count: { $sum: 1 } } },
+    ]);
+    const violationCountMap = new Map(violationCounts.map((row) => [row._id.toString(), row.count]));
+    const resultsWithViolations = results.map((result) => {
+      const resultObject = result.toObject();
+      resultObject.violationCount = violationCountMap.get(result.studentId?._id.toString()) || 0;
+      return resultObject;
+    });
 
-    res.json({ success: true, data: { test, results: resultsWithViolations } });
+    res.json({ success: true, data: { test, results: resultsWithViolations, pagination: { page, limit, total, pages: Math.ceil(total / limit) } } });
   } catch (error) { next(error); }
 };
 
@@ -183,6 +191,7 @@ exports.getAllResults = async (req, res, next) => {
 
     const [results, total] = await Promise.all([
       Result.find(filter)
+        .select('studentId testId score totalMarks percentage correctAnswers incorrectAnswers unattempted status autoSubmitted submittedAt timeTaken attemptNumber')
         .populate('studentId', 'name email rollNumber')
         .populate('testId', 'title subject totalMarks')
         .sort({ submittedAt: -1 })
@@ -190,15 +199,26 @@ exports.getAllResults = async (req, res, next) => {
       Result.countDocuments(filter),
     ]);
 
-    const resultsWithViolations = await Promise.all(
-      results.map(async (r) => {
-        const rObj = r.toObject();
-        rObj.violationCount = await Violation.countDocuments({
-          studentId: r.studentId?._id, testId: r.testId?._id,
-        });
-        return rObj;
-      })
+    const resultPairs = results
+      .filter((result) => result.studentId?._id && result.testId?._id)
+      .map((result) => ({ studentId: result.studentId._id, testId: result.testId._id }));
+    const violationCounts = resultPairs.length === 0 ? [] : await Violation.aggregate([
+      {
+        $match: {
+          $or: resultPairs.map(({ studentId, testId }) => ({ studentId, testId })),
+        },
+      },
+      { $group: { _id: { studentId: '$studentId', testId: '$testId' }, count: { $sum: 1 } } },
+    ]);
+    const violationCountMap = new Map(
+      violationCounts.map((row) => [`${row._id.studentId}:${row._id.testId}`, row.count])
     );
+    const resultsWithViolations = results.map((result) => {
+      const resultObject = result.toObject();
+      const key = `${result.studentId?._id}:${result.testId?._id}`;
+      resultObject.violationCount = violationCountMap.get(key) || 0;
+      return resultObject;
+    });
 
     res.json({
       success: true,
@@ -655,14 +675,21 @@ exports.exportSingleResultPDF = async (req, res) => {
  */
 exports.exportResultsPDF = async (req, res, next) => {
   try {
+    const maxExportResults = Math.min(
+      Math.max(parseInt(process.env.PDF_EXPORT_MAX_RESULTS, 10) || 5000, 100),
+      10000
+    );
     const test = await Test.findById(req.params.testId);
     if (!test) {
       return res.status(404).json({ success: false, message: 'Test not found' });
     }
 
     const results = await Result.find({ testId: req.params.testId })
+      .select('studentId score totalMarks percentage status autoSubmitted submittedAt timeTaken')
       .populate('studentId', 'name email rollNumber department')
-      .sort({ score: -1 });
+      .sort({ score: -1 })
+      .limit(maxExportResults)
+      .lean();
 
     const passingPct = test.passingPercentage || 40;
 
@@ -674,17 +701,12 @@ exports.exportResultsPDF = async (req, res, next) => {
     const lowest = scores.length ? Math.min(...scores) : 0;
     const average = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
-    // ─── Create PDF ───
+    // Stream PDF bytes directly to the client instead of buffering the full file.
+    const safeName = `results_${test.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
     const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 40, bufferPages: true });
-    const chunks = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => {
-      const pdfBuffer = Buffer.concat(chunks);
-      const safeName = `results_${test.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
-      res.send(pdfBuffer);
-    });
+    doc.pipe(res);
 
     const pageW = doc.page.width;
     const contentW = pageW - 80;

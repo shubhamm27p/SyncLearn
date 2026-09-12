@@ -102,5 +102,6 @@ const codingSubmissionSchema = new mongoose.Schema(
 // Index: find submissions by student + test efficiently
 codingSubmissionSchema.index({ testId: 1, studentId: 1 });
 codingSubmissionSchema.index({ problemId: 1, studentId: 1 });
+codingSubmissionSchema.index({ testId: 1, studentId: 1, submittedAt: -1 });
 
 module.exports = mongoose.model('CodingSubmission', codingSubmissionSchema);

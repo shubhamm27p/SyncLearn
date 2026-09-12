@@ -13,7 +13,7 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(uri, {
-      autoIndex: true,
+      autoIndex: process.env.NODE_ENV !== 'production',
       serverSelectionTimeoutMS: 2500,
     });
 
@@ -44,7 +44,7 @@ const connectDB = async () => {
         process.env.MONGO_URI = instanceUri;
 
         const conn = await mongoose.connect(instanceUri, {
-          autoIndex: true,
+          autoIndex: process.env.NODE_ENV !== 'production',
         });
 
         console.log(`✅  MongoDB connected: ${conn.connection.host}/${conn.connection.name}`);

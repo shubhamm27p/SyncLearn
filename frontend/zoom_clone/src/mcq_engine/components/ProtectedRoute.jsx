@@ -1,17 +1,26 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { AuthContext } from '../../contents/AuthContents';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { Box, CircularProgress } from '@mui/material';
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { userRole, currentUser } = useContext(AuthContext);
-  const token = localStorage.getItem('token');
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
 
-  if (!token) {
+  if (!isLoaded) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!isSignedIn) {
     return <Navigate to="/auth" replace />;
   }
 
-  const currentRole = userRole || currentUser?.role || 'student';
+  // Fallback to student role if metadata is not provided
+  const currentRole = user?.publicMetadata?.role || 'student';
 
   if (allowedRoles) {
     const roleMatch = allowedRoles.some((role) => {

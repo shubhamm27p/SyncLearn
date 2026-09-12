@@ -26,76 +26,68 @@ exports.getAvailableTests = async (req, res, next) => {
       ],
     })
       .select('title description subject startTime endTime duration maxAttempts marksPerQuestion totalMarks testType')
-      .sort({ startTime: 1 });
+      .sort({ startTime: 1 })
+      .lean();
 
-    // Enrich with question count + attempt status
-    const enriched = await Promise.all(
-      tests.map(async (t) => {
-        const tObj = t.toObject();
-        tObj.totalQuestions = await Question.countDocuments({ testId: t._id });
+    const testIds = tests.map((test) => test._id);
+    const studentId = req.user._id;
 
-        // Check student's attempt count
-        const attemptCount = await Result.countDocuments({
-          testId: t._id,
-          studentId: req.user._id,
-        });
-        tObj.attemptCount = attemptCount;
-        tObj.hasAttempted = attemptCount >= t.maxAttempts;
+    const [questionCounts, attemptCounts, bestScores, codingCounts, codingAttempts] = await Promise.all([
+      Question.aggregate([
+        { $match: { testId: { $in: testIds } } },
+        { $group: { _id: '$testId', count: { $sum: 1 } } },
+      ]),
+      Result.aggregate([
+        { $match: { testId: { $in: testIds }, studentId } },
+        { $group: { _id: '$testId', count: { $sum: 1 } } },
+      ]),
+      Result.aggregate([
+        { $match: { testId: { $in: testIds }, studentId } },
+        { $sort: { score: -1 } },
+        { $group: {
+          _id: '$testId',
+          score: { $first: '$score' },
+          percentage: { $first: '$percentage' },
+        } },
+      ]),
+      CodingProblem.aggregate([
+        { $match: { testId: { $in: testIds } } },
+        { $group: { _id: '$testId', count: { $sum: 1 } } },
+      ]),
+      CodingSubmission.aggregate([
+        { $match: { testId: { $in: testIds }, studentId } },
+        { $group: { _id: '$testId' } },
+      ]),
+    ]);
 
-        // Get best score if attempted
-        if (attemptCount > 0) {
-          const best = await Result.findOne({ testId: t._id, studentId: req.user._id })
-            .sort({ score: -1 })
-            .select('score percentage');
-          tObj.bestScore = best?.score || 0;
-          tObj.bestPercentage = best?.percentage || 0;
-        }
+    const toMap = (rows) => new Map(rows.map((row) => [row._id.toString(), row]));
+    const questionCountMap = toMap(questionCounts);
+    const attemptCountMap = toMap(attemptCounts);
+    const bestScoreMap = toMap(bestScores);
+    const codingCountMap = toMap(codingCounts);
+    const codingAttemptMap = new Set(codingAttempts.map((row) => row._id.toString()));
 
-        // Determine status
-        const start = new Date(t.startTime);
-        const end = new Date(t.endTime);
-        if (now >= start && now <= end) {
-          tObj.liveStatus = 'live';
-        } else if (now < start) {
-          tObj.liveStatus = 'upcoming';
-        }
+    const enriched = tests.map((test) => {
+      const key = test._id.toString();
+      const attemptCount = attemptCountMap.get(key)?.count || 0;
+      const bestScore = bestScoreMap.get(key);
+      const start = new Date(test.startTime);
+      const end = new Date(test.endTime);
 
-        return tObj;
-      })
-    );
+      return {
+        ...test,
+        totalQuestions: questionCountMap.get(key)?.count || 0,
+        attemptCount,
+        hasAttempted: attemptCount >= test.maxAttempts,
+        bestScore: bestScore?.score || 0,
+        bestPercentage: bestScore?.percentage || 0,
+        codingProblemCount: codingCountMap.get(key)?.count || 0,
+        hasAttemptedCoding: codingAttemptMap.has(key),
+        liveStatus: now >= start && now <= end ? 'live' : now < start ? 'upcoming' : undefined,
+      };
+    });
 
-    const testsWithCodingInfo = await Promise.all(enriched.map(async (test) => {
-      const testObj = test;
-
-      // Default values for mcq-only tests
-      testObj.codingProblemCount = 0;
-      testObj.hasAttemptedCoding = false;
-
-      if (testObj.testType === 'coding' || testObj.testType === 'combined') {
-        const codingCount = await CodingProblem.countDocuments({
-          testId: testObj._id
-        });
-        testObj.codingProblemCount = codingCount;
-
-        const codingSubmission = await CodingSubmission.findOne({
-          studentId: req.user._id,
-          testId: testObj._id
-        });
-        testObj.hasAttemptedCoding = !!codingSubmission;
-      }
-
-      return testObj;
-    }));
-
-    console.log('Tests with coding info:', testsWithCodingInfo.map(t => ({
-      title: t.title,
-      testType: t.testType,
-      codingProblemCount: t.codingProblemCount,
-      hasAttemptedCoding: t.hasAttemptedCoding,
-      hasAttemptedMCQ: t.hasAttemptedMCQ ?? t.hasAttempted ?? 'unknown_field'
-    })));
-
-    res.json({ success: true, data: testsWithCodingInfo });
+    res.json({ success: true, data: enriched });
   } catch (error) {
     next(error);
   }

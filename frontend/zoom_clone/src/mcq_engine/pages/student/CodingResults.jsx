@@ -20,6 +20,7 @@ const CodingResults = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [submissionDetails, setSubmissionDetails] = useState({});
 
   useEffect(() => {
     fetchSubmissions();
@@ -33,6 +34,19 @@ const CodingResults = () => {
       toast.error('Failed to load results');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleSubmission = async (submission) => {
+    const isExpanded = expandedId === submission._id;
+    setExpandedId(isExpanded ? null : submission._id);
+    if (!isExpanded && !submissionDetails[submission._id]) {
+      try {
+        const res = await API.get(`/coding/submissions/${submission._id}`);
+        setSubmissionDetails((current) => ({ ...current, [submission._id]: res.data.data }));
+      } catch {
+        toast.error('Failed to load submission details');
+      }
     }
   };
 
@@ -112,7 +126,7 @@ const CodingResults = () => {
             const isExpanded = expandedId === sub._id;
             return (
               <div key={sub._id} style={{ background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
-                <div onClick={() => setExpandedId(isExpanded ? null : sub._id)} style={{ padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div onClick={() => toggleSubmission(sub)} style={{ padding: '16px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '14px' }}>
                       {sub.problemId?.title || 'Problem'}
@@ -132,11 +146,11 @@ const CodingResults = () => {
 
                 {isExpanded && (
                   <div style={{ borderTop: '1px solid var(--border-color)', padding: '16px 20px' }}>
-                    {sub.testCaseResults && sub.testCaseResults.length > 0 && (
+                    {(submissionDetails[sub._id] || sub).testCaseResults && (submissionDetails[sub._id] || sub).testCaseResults.length > 0 && (
                       <div style={{ marginBottom: '14px' }}>
                         <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', margin: 0 }}>Test Cases</p>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-                          {sub.testCaseResults.map((tcr, idx) => (
+                          {(submissionDetails[sub._id] || sub).testCaseResults.map((tcr, idx) => (
                             <div key={idx} style={{
                               padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
                               background: tcr.passed ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
@@ -163,7 +177,7 @@ const CodingResults = () => {
                     <details>
                       <summary style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer', marginBottom: '6px' }}>View Source Code</summary>
                       <pre style={{ background: theme === 'light' ? '#f8faff' : '#1a1a1d', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '14px', fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '300px', overflow: 'auto', margin: 0 }}>
-                        {sub.sourceCode}
+                        {submissionDetails[sub._id]?.sourceCode || 'Loading source code...'}
                       </pre>
                     </details>
                   </div>

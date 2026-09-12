@@ -104,6 +104,9 @@ const resultSchema = new mongoose.Schema(
 // Compound index: one result per student per test per attempt
 resultSchema.index({ testId: 1, studentId: 1, attemptNumber: 1 }, { unique: true });
 resultSchema.index({ studentId: 1, status: 1 });
+resultSchema.index({ studentId: 1, submittedAt: -1 });
+resultSchema.index({ testId: 1, score: -1 });
+resultSchema.index({ testId: 1, submittedAt: -1 });
 
 // Calculate percentage before saving
 resultSchema.pre('save', function (next) {

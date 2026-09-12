@@ -126,5 +126,6 @@ testSchema.virtual('answerKey', {
 testSchema.index({ createdBy: 1, status: 1 });
 testSchema.index({ subject: 1 });
 testSchema.index({ status: 1, startTime: 1 });
+testSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Test', testSchema);

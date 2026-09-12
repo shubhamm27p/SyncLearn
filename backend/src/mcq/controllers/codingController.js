@@ -9,6 +9,40 @@ const Question = require('../models/Question');
 const AnswerKey = require('../models/AnswerKey');
 const User = require('../models/User');
 
+const MAX_SOURCE_CODE_LENGTH = 100_000;
+const MAX_TEST_CASES_PER_SUBMISSION = 25;
+const EXECUTION_CONCURRENCY = 3;
+
+const executeTestCases = async (testCases, language, sourceCode) => {
+  const results = new Array(testCases.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= testCases.length) return;
+
+      const testCase = testCases[index];
+      try {
+        results[index] = await executeCode(language, sourceCode, testCase.input || '');
+      } catch (error) {
+        results[index] = {
+          success: false,
+          status: 'Execution Error',
+          stdout: '',
+          stderr: error.message,
+          time: '0',
+        };
+      }
+    }
+  };
+
+  await Promise.all(
+    Array.from({ length: Math.min(EXECUTION_CONCURRENCY, testCases.length) }, worker)
+  );
+  return results;
+};
+
 // ═══════════════════════════════════════════════
 //  ADMIN — Problem CRUD
 // ═══════════════════════════════════════════════
@@ -282,6 +316,13 @@ exports.submitSolution = async (req, res) => {
     const { id } = req.params;
     const { language, sourceCode } = req.body;
 
+    if (!sourceCode || typeof sourceCode !== 'string' || sourceCode.length > MAX_SOURCE_CODE_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Source code is required and must be at most ${MAX_SOURCE_CODE_LENGTH} characters`,
+      });
+    }
+
     console.log('[Submit] Starting:', {
       problemId: id,
       language,
@@ -321,39 +362,21 @@ exports.submitSolution = async (req, res) => {
       });
     }
 
-    console.log('[Submit] Running', problem.testCases.length, 'test cases');
+    if (problem.testCases.length > MAX_TEST_CASES_PER_SUBMISSION) {
+      return res.status(400).json({
+        success: false,
+        message: `This problem has too many test cases. The maximum is ${MAX_TEST_CASES_PER_SUBMISSION}.`,
+      });
+    }
+
+    console.log('[Submit] Running', problem.testCases.length, 'test cases with bounded concurrency');
 
     const testCaseResults = [];
     let totalScore = 0;
 
-    for (let i = 0; i < problem.testCases.length; i++) {
-      const tc = problem.testCases[i];
-      
-      console.log('[Submit] Test case', i + 1, '/', problem.testCases.length);
-
-      let execResult;
-      try {
-        execResult = await executeCode(
-          language,
-          sourceCode,
-          tc.input || ''
-        );
-        
-        console.log('[Submit] TC' + (i+1) + ' result:', {
-          success: execResult.success,
-          stdout: execResult.stdout?.substring(0, 50),
-          status: execResult.status
-        });
-      } catch (execErr) {
-        console.error('[Submit] TC' + (i+1) + ' FAILED:', execErr.message);
-        execResult = {
-          success: false,
-          status: 'Execution Error',
-          stdout: '',
-          stderr: execErr.message,
-          time: '0'
-        };
-      }
+    const executionResults = await executeTestCases(problem.testCases, language, sourceCode);
+    problem.testCases.forEach((tc, i) => {
+      const execResult = executionResults[i];
 
       const actual = (execResult.stdout || '').trim();
       const expected = (tc.expectedOutput || '').trim();
@@ -375,7 +398,7 @@ exports.submitSolution = async (req, res) => {
           ? execResult.status
           : (passed ? 'Accepted' : 'Wrong Answer')
       });
-    }
+    });
 
     console.log('[Submit] All test cases done:', {
       totalScore,
@@ -444,17 +467,45 @@ exports.submitSolution = async (req, res) => {
  */
 exports.getSubmissions = async (req, res) => {
   try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const submissions = await CodingSubmission.find({
       testId: req.params.testId,
       studentId: req.user._id,
     })
+      .select('studentId testId problemId language score totalMarks status submittedAt attemptNumber autoSubmitted testCaseResults')
       .populate('problemId', 'title problemNo totalMarks')
-      .sort({ submittedAt: -1 });
+      .sort({ submittedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    return res.json({ success: true, data: submissions });
+    const total = await CodingSubmission.countDocuments({ testId: req.params.testId, studentId: req.user._id });
+    return res.json({ success: true, data: submissions, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error('Get submissions error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch submissions' });
+  }
+};
+
+exports.getSubmissionById = async (req, res) => {
+  try {
+    const submission = await CodingSubmission.findById(req.params.id)
+      .select('studentId testId problemId language sourceCode testCaseResults score totalMarks status compilationError submittedAt attemptNumber autoSubmitted')
+      .populate('studentId', 'name email rollNumber')
+      .populate('problemId', 'title problemNo totalMarks');
+
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+
+    if (req.user.role !== 'admin' && submission.studentId?._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    return res.json({ success: true, data: submission });
+  } catch (error) {
+    console.error('Get submission detail error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch submission' });
   }
 };
 
@@ -469,14 +520,20 @@ exports.getSubmissions = async (req, res) => {
  */
 exports.getTestSubmissions = async (req, res) => {
   try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
     const submissions = await CodingSubmission.find({
       testId: req.params.testId,
     })
+      .select('studentId testId problemId language score totalMarks status submittedAt attemptNumber autoSubmitted testCaseResults')
       .populate('studentId', 'name email rollNumber')
       .populate('problemId', 'title problemNo totalMarks')
-      .sort({ submittedAt: -1 });
+      .sort({ submittedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+    const total = await CodingSubmission.countDocuments({ testId: req.params.testId });
 
-    return res.json({ success: true, data: submissions });
+    return res.json({ success: true, data: submissions, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error('Get test submissions error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch submissions' });
@@ -500,22 +557,11 @@ exports.getCombinedResult = async (req, res) => {
       })
       .populate('testId', 'title subject duration marksPerQuestion testType passingPercentage');
 
-    // Get coding submission (find the LATEST submission for this test)
-    const codingSubmission = await CodingSubmission.findOne({
-        testId,
-        studentId: studentId
-      })
-      .sort({ submittedAt: -1 })
-      .populate({
-        path: 'problemId',
-        model: 'CodingProblem',
-        select: 'title marks totalMarks'
-      });
-
     const allCodingSubmissions = await CodingSubmission.find({
         testId,
         studentId: studentId
       })
+      .select('problemId language score totalMarks status autoSubmitted testCaseResults submittedAt attemptNumber')
       .populate({
         path: 'problemId',
         model: 'CodingProblem',
@@ -589,7 +635,6 @@ exports.getCombinedResult = async (req, res) => {
               passedTestCases: sub.testCaseResults?.filter(tc => tc.passed).length || 0,
               totalTestCases: sub.testCaseResults?.length || 0,
               submittedAt: sub.submittedAt,
-              sourceCode: sub.sourceCode
             })),
           totalScore: codingScore,
           totalMarks: codingTotalMarks,

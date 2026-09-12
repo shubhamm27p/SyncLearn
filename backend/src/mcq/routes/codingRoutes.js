@@ -10,6 +10,7 @@ const {
   runCode,
   submitSolution,
   getSubmissions,
+  getSubmissionById,
   getTestSubmissions,
   getCombinedResult,
   getCombinedResultPDF,
@@ -53,6 +54,7 @@ router.get(
 // ─── Student Routes ───
 router.get('/:testId/student-problems', protect, authorize('student'), getStudentProblems);
 router.post('/run', protect, authorize('student'), runCode);
+router.get('/submissions/:id', protect, getSubmissionById);
 router.post('/problems/:id/submit', protect, authorize('student'), submitSolution);
 router.get('/:testId/submissions', protect, authorize('student'), getSubmissions);
 

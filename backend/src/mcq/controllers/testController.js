@@ -110,16 +110,21 @@ exports.getTests = async (req, res, next) => {
       Test.countDocuments(query),
     ]);
 
-    // For each test, get question count
-    const testsWithMeta = await Promise.all(
-      tests.map(async (t) => {
-        const testObj = t.toObject();
-        testObj.questionCount = await Question.countDocuments({ testId: t._id });
-        const hasAnswerKey = await AnswerKey.exists({ testId: t._id });
-        testObj.hasAnswerKey = !!hasAnswerKey;
-        return testObj;
-      })
-    );
+    const testIds = tests.map((test) => test._id);
+    const [questionCounts, answerKeys] = await Promise.all([
+      Question.aggregate([
+        { $match: { testId: { $in: testIds } } },
+        { $group: { _id: '$testId', count: { $sum: 1 } } },
+      ]),
+      AnswerKey.find({ testId: { $in: testIds } }).select('testId').lean(),
+    ]);
+    const questionCountMap = new Map(questionCounts.map((row) => [row._id.toString(), row.count]));
+    const answerKeyIds = new Set(answerKeys.map((answerKey) => answerKey.testId.toString()));
+    const testsWithMeta = tests.map((test) => ({
+      ...test.toObject(),
+      questionCount: questionCountMap.get(test._id.toString()) || 0,
+      hasAnswerKey: answerKeyIds.has(test._id.toString()),
+    }));
 
     res.json({
       success: true,

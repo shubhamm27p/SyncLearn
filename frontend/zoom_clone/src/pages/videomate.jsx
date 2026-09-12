@@ -722,10 +722,6 @@ export default function VideoMeetComponent() {
                 setOpenSnackbar(true);
             });
 
-            socketRef.current.on("mcq-answer-recorded", (data) => {
-                fetchQuizRecords();
-            });
-
             socketRef.current.on("analytics-update", (data) => {
                 setMcqAnalytics(data);
             });
@@ -1178,7 +1174,6 @@ export default function VideoMeetComponent() {
 
     useEffect(() => {
         const currentConnections = connectionsRef.current;
-        const currentSocket = socketRef.current;
 
         return () => {
             for (let id in currentConnections) {
@@ -1187,8 +1182,8 @@ export default function VideoMeetComponent() {
                 } catch (e) {}
                 delete currentConnections[id];
             }
-            if (currentSocket) {
-                currentSocket.disconnect();
+            if (socketRef.current) {
+                socketRef.current.disconnect();
             }
         };
     }, []);

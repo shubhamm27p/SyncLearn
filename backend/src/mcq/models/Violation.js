@@ -45,5 +45,6 @@ const violationSchema = new mongoose.Schema(
 // Indexes for fast queries
 violationSchema.index({ studentId: 1, testId: 1 });
 violationSchema.index({ testId: 1 });
+violationSchema.index({ testId: 1, studentId: 1 });
 
 module.exports = mongoose.model('Violation', violationSchema);

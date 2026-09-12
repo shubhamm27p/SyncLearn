@@ -7,6 +7,10 @@ let timeOnline = {};
 let activeQuizzes = {}; // roomKey -> active quiz state (stores server-side correctOptionIndex, timer, and buffered responses)
 let socketUserMap = {}; // socket.id -> { username, role, room }
 let meetingHosts = {}; // roomKey -> { ownerUsername, activeHostId }
+const socketAuthCache = new Map();
+const SOCKET_AUTH_CACHE_TTL_MS = 60_000;
+const MAX_SOCKET_AUTH_CACHE_ENTRIES = 10_000;
+const MAX_CHAT_MESSAGES_PER_ROOM = 100;
 
 const getSocketUser = (socket) => socketUserMap[socket.id];
 const isRoomHost = (socket, room) => {
@@ -97,8 +101,6 @@ export const connectToSocket = (server) => {
 
     io.use(async (socket, next) => {
         const token = socket.handshake.auth?.token || socket.handshake.headers.authorization?.replace(/^Bearer\s+/i, '');
-        const authPayload = socket.handshake.auth || {};
-
         socket.authUser = null;
 
         if (!token) {
@@ -106,11 +108,19 @@ export const connectToSocket = (server) => {
         }
 
         try {
-            const { data: user, error } = await supabase
-                .from('users')
-                .select('id, name, username, role, is_active, email')
-                .eq('token', token)
-                .maybeSingle();
+            let user = getCachedSocketUser(token);
+            let error = null;
+
+            if (!user) {
+                const response = await supabase
+                    .from('users')
+                    .select('id, name, username, role, is_active, email')
+                    .eq('token', token)
+                    .maybeSingle();
+                user = response.data;
+                error = response.error;
+                if (user && user.is_active !== false) cacheSocketUser(token, user);
+            }
 
             if (error) {
                 console.error('[Socket Auth DB Error]', error);
@@ -390,7 +400,13 @@ export const connectToSocket = (server) => {
             // Schedule asynchronous background flush when timer expires
             setTimeout(() => {
                 if (activeQuizzes[roomKey] && activeQuizzes[roomKey].id === activeQuizState.id) {
-                    flushQuizSubmissionsToDB(roomKey, activeQuizzes[roomKey]);
+                    const quizToFlush = activeQuizzes[roomKey];
+                    flushQuizSubmissionsToDB(roomKey, quizToFlush)
+                        .finally(() => {
+                            if (activeQuizzes[roomKey]?.id === quizToFlush.id) {
+                                delete activeQuizzes[roomKey];
+                            }
+                        });
                 }
             }, timeLimit * 1000 + 1000);
         });
@@ -442,8 +458,9 @@ export const connectToSocket = (server) => {
 
             // Emit live aggregate response metrics to room (Trainer/Admin views)
             if (connections[userRoom]) {
-                const totalSubmissions = Object.keys(activeQuiz.responsesMap).length;
-                const rightCount = Object.values(activeQuiz.responsesMap).filter(r => r.isCorrect).length;
+                const responses = Object.values(activeQuiz.responsesMap);
+                const totalSubmissions = responses.length;
+                const rightCount = responses.reduce((count, response) => count + (response.isCorrect ? 1 : 0), 0);
                 const wrongCount = totalSubmissions - rightCount;
 
                 connections[userRoom].forEach((elem) => {
@@ -458,7 +475,6 @@ export const connectToSocket = (server) => {
                         totalSubmissions,
                         rightCount,
                         wrongCount,
-                        responses: Object.values(activeQuiz.responsesMap)
                     });
                 });
             }
@@ -480,6 +496,9 @@ export const connectToSocket = (server) => {
                     "recipient": recipient,
                     "timestamp": timeStr
                 });
+                if (messages[userRoom].length > MAX_CHAT_MESSAGES_PER_ROOM) {
+                    messages[userRoom].splice(0, messages[userRoom].length - MAX_CHAT_MESSAGES_PER_ROOM);
+                }
 
                 connections[userRoom].forEach((elem) => {
                     io.to(elem).emit("chat-message", data, sender, socket.id, timeStr, recipient);
@@ -500,6 +519,7 @@ export const connectToSocket = (server) => {
                     }
                     delete connections[userRoom];
                     delete meetingHosts[userRoom];
+                    delete messages[userRoom];
                 }
             }
         });
@@ -527,6 +547,7 @@ export const connectToSocket = (server) => {
                     }
                     delete connections[userRoom];
                     delete meetingHosts[userRoom];
+                    delete messages[userRoom];
                 } else if (wasActiveHost) {
                     connections[userRoom].forEach((elem) => {
                         io.to(elem).emit("meeting-ended", { reason: "The host has left, ending the meeting for everyone." });
@@ -538,6 +559,7 @@ export const connectToSocket = (server) => {
                     }
                     delete connections[userRoom];
                     delete meetingHosts[userRoom];
+                    delete messages[userRoom];
                 }
             }
         });
@@ -552,4 +574,21 @@ export const getActiveRooms = () => {
         }
     }
     return active;
+};
+
+const getCachedSocketUser = (token) => {
+    const cached = socketAuthCache.get(token);
+    if (!cached || cached.expiresAt <= Date.now()) {
+        socketAuthCache.delete(token);
+        return null;
+    }
+    return cached.user;
+};
+
+const cacheSocketUser = (token, user) => {
+    if (socketAuthCache.size >= MAX_SOCKET_AUTH_CACHE_ENTRIES) {
+        const oldestToken = socketAuthCache.keys().next().value;
+        socketAuthCache.delete(oldestToken);
+    }
+    socketAuthCache.set(token, { user, expiresAt: Date.now() + SOCKET_AUTH_CACHE_TTL_MS });
 };
