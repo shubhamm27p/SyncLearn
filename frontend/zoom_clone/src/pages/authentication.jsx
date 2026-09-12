@@ -101,6 +101,8 @@ const inputSx = {
 };
 
 export default function Authentication() {
+  const routeTo = useNavigate();
+  const location = useLocation();
   const { signIn, isLoaded } = useSignIn();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -139,9 +141,6 @@ export default function Authentication() {
   // 0: Log In, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
   const [open, setOpen] = useState(false);
-
-  const routeTo = useNavigate();
-  const location = useLocation();
 
   const goAfterAuthentication = () => {
     const params = new URLSearchParams(location.search);
