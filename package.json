@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@clerk/clerk-react": "^5.61.9",
+    "@clerk/express": "^2.1.67",
     "clerk": "^3.3.0"
   }
 }
