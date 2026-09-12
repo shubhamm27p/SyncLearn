@@ -1,26 +1,25 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
 
 const withAuth = (WrappedComponent) => {
     const AuthComponent = (props) => {
         const navigate = useNavigate();
         const location = useLocation();
-        const { isLoaded, isSignedIn } = useAuth();
         const [isReady, setIsReady] = useState(false);
 
         useEffect(() => {
-            if (!isLoaded) return;
-            
+            const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+            const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
             const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
-            const hasAuth = isSignedIn || isAdmin;
+
+            const hasAuth = Boolean((token && storedUser) || isAdmin);
 
             if (!hasAuth) {
                 navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });
                 return;
             }
             setIsReady(true);
-        }, [isLoaded, isSignedIn, location, navigate]);
+        }, [location]);
 
         if (!isReady) {
             return null;
