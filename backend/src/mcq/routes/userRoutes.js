@@ -3,9 +3,9 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/auth');
 
-// All user routes require authentication + admin role
+// All user routes require authentication + admin/trainer role
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'trainer'));
 
 // Student-specific routes (must come before /:id to avoid conflict)
 router.get('/students', userController.getAllStudents);

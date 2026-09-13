@@ -57,6 +57,7 @@ function App() {
               <Route path='/about' element={<ApplicationDetails />} />
               <Route path='/terms' element={<TermsAndConditions />} />
               <Route path='/auth' element={<Authentication />} />
+              <Route path='/auth/sso-callback' element={<Authentication />} />
               <Route path='/home' element={<HomeComponent />} />
               <Route path='/history' element={<History />} />
               <Route path='/admin-login' element={<AdminLogin />} />

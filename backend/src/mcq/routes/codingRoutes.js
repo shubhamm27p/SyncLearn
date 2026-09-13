@@ -17,16 +17,16 @@ const {
 } = require('../controllers/codingController');
 
 // ─── Admin Routes ───
-router.post('/:testId/problems', protect, authorize('admin'), createProblem);
-router.get('/:testId/problems', protect, authorize('admin'), getProblems);
-router.put('/problems/:id', protect, authorize('admin'), updateProblem);
-router.delete('/problems/:id', protect, authorize('admin'), deleteProblem);
-router.get('/:testId/all-submissions', protect, authorize('admin'), getTestSubmissions);
+router.post('/:testId/problems', protect, authorize('admin', 'trainer'), createProblem);
+router.get('/:testId/problems', protect, authorize('admin', 'trainer'), getProblems);
+router.put('/problems/:id', protect, authorize('admin', 'trainer'), updateProblem);
+router.delete('/problems/:id', protect, authorize('admin', 'trainer'), deleteProblem);
+router.get('/:testId/all-submissions', protect, authorize('admin', 'trainer'), getTestSubmissions);
 
 router.get(
   '/test-compiler',
   protect,
-  authorize('admin'),
+  authorize('admin', 'trainer'),
   async (req, res) => {
     try {
       const { executeCode } = require('../utils/piston');
@@ -75,7 +75,7 @@ router.get(
 router.get(
   '/admin/combined-result/:testId/:studentId',
   protect,
-  authorize('admin'),
+  authorize('admin', 'trainer'),
   async (req, res, next) => {
     req.user._id = req.params.studentId;
     next();

@@ -84,6 +84,11 @@ const TakeCodingTest = () => {
             const testRes = await API.get(`/student/tests/${testId}/start`);
             setTestData(testRes.data.data || testRes.data);
           } catch (e) {
+            if (e.response && (e.response.status === 400 || e.response.status === 403)) {
+              toast.error(e.response?.data?.message || 'Cannot start this test');
+              navigate('/tests');
+              return;
+            }
             console.warn('Could not fetch test data for pre-screen', e);
           }
         }
@@ -103,6 +108,12 @@ const TakeCodingTest = () => {
       });
       setCodeState(initial);
     } catch (err) {
+      if (err.response && (err.response.status === 400 || err.response.status === 403)) {
+        toast.error(err.response?.data?.message || 'Cannot start this test');
+        navigate('/tests');
+        return;
+      }
+
       console.warn("Error fetching problems, falling back to local storage:", err);
       try {
         const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');

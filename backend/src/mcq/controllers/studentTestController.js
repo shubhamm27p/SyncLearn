@@ -127,16 +127,16 @@ exports.getTestForAttempt = async (req, res, next) => {
       });
     }
 
-    // Check attempt limit
+    // Check strict one-attempt limit
     const attemptCount = await Result.countDocuments({
       testId: test._id,
       studentId: req.user._id,
     });
 
-    if (attemptCount >= test.maxAttempts) {
+    if (attemptCount >= 1) {
       return res.status(400).json({
         success: false,
-        message: `You have already used all ${test.maxAttempts} attempt(s)`,
+        message: 'You have already attempted this test. You cannot attempt the same test again.',
       });
     }
 
@@ -197,16 +197,16 @@ exports.submitTest = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Test not found' });
     }
 
-    // Check for duplicate submission
+    // Check strict one-attempt limit
     const attemptCount = await Result.countDocuments({
       testId: test._id,
       studentId: req.user._id,
     });
 
-    if (attemptCount >= test.maxAttempts) {
+    if (attemptCount >= 1) {
       return res.status(400).json({
         success: false,
-        message: 'You have already submitted this test',
+        message: 'You have already submitted this test. You cannot attempt the same test again.',
       });
     }
 

@@ -10,6 +10,7 @@ import bcrypt from "bcrypt";
 import { globalLimiter } from "./middlewares/rateLimiter.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { authMiddleware } from "./middlewares/authMiddleware.js";
+import webhookRouter from "./routes/webhookRoutes.js";
 
 // Load environment variables from .env if present
 try {
@@ -120,6 +121,9 @@ app.use(
     },
     mcqApp
 );
+
+// Mount webhooks BEFORE express.json() so raw body is preserved
+app.use("/api/v1/webhooks", webhookRouter);
 
 app.use(express.json({limit: "49kb"}));
 app.use(express.urlencoded({limit: "40kb", extended: true}));

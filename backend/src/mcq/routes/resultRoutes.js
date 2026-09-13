@@ -11,15 +11,15 @@ router.post('/submit', resultController.submitTest);
 router.get('/my-results', resultController.getMyResults);
 
 // Admin routes
-router.get('/', authorize('admin'), resultController.getAllResults);
-router.get('/test/:testId', authorize('admin'), resultController.getResultsByTest);
-router.get('/test/:testId/export-pdf', authorize('admin'), resultController.exportResultsPDF);
+router.get('/', authorize('admin', 'trainer'), resultController.getAllResults);
+router.get('/test/:testId', authorize('admin', 'trainer'), resultController.getResultsByTest);
+router.get('/test/:testId/export-pdf', authorize('admin', 'trainer'), resultController.exportResultsPDF);
 
 // Shared (with role check inside controller)
 router.get('/:id', resultController.getResultById);
 
 // Admin only
-router.put('/:id/grade', authorize('admin'), resultController.gradeResult);
-router.get('/:id/export-pdf', authorize('admin'), resultController.exportSingleResultPDF);
+router.put('/:id/grade', authorize('admin', 'trainer'), resultController.gradeResult);
+router.get('/:id/export-pdf', authorize('admin', 'trainer'), resultController.exportSingleResultPDF);
 
 module.exports = router;

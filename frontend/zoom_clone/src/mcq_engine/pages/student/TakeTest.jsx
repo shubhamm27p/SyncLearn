@@ -341,16 +341,18 @@ const ActiveTest = ({ testData }) => {
             className="dms-btn dms-btn-outline dms-btn-sm">
             <HiOutlineFlag size={16} /> {state.flagged.includes(current.questionNo) ? 'Unflag' : 'Flag'}
           </button>
+        </div>
+
+        {state.currentQuestion === totalQ - 1 ? (
           <button onClick={handleManualSubmit} className="dms-btn dms-btn-danger dms-btn-sm">
             <HiOutlinePaperAirplane size={16} /> {isCombinedTest ? 'Next Section: Coding →' : 'Submit Exam'}
           </button>
-        </div>
-
-        <button onClick={() => dispatch({ type: 'NAVIGATE', index: Math.min(totalQ - 1, state.currentQuestion + 1) })}
-          disabled={state.currentQuestion === totalQ - 1}
-          className="dms-btn dms-btn-outline dms-btn-sm" style={{ opacity: state.currentQuestion === totalQ - 1 ? 0.4 : 1 }}>
-          Next <HiOutlineChevronRight size={16} />
-        </button>
+        ) : (
+          <button onClick={() => dispatch({ type: 'NAVIGATE', index: Math.min(totalQ - 1, state.currentQuestion + 1) })}
+            className="dms-btn dms-btn-primary dms-btn-sm">
+            Next <HiOutlineChevronRight size={16} />
+          </button>
+        )}
       </footer>
     </div>
   );
@@ -381,6 +383,14 @@ const TakeTest = () => {
           setTestData(testObj);
         }
       } catch (err) {
+        // If backend explicitly rejected due to attempt limit or business logic, do not fallback
+        if (err.response && (err.response.status === 400 || err.response.status === 403)) {
+          setError(err.response?.data?.message || 'Cannot start this test');
+          toast.error(err.response?.data?.message || 'Cannot start this test');
+          setLoading(false);
+          return;
+        }
+
         console.warn("Error fetching test, falling back to local storage:", err);
         try {
           const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');

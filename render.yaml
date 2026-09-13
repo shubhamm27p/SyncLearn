@@ -38,3 +38,5 @@ services:
         value: synclearn_admin
       - key: GATEWAY_SECRET
         sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
