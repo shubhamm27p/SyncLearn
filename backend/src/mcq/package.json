@@ -1,3 +1,7 @@
 {
-  "type": "commonjs"
+  "type": "commonjs",
+  "scripts": {
+    "migrate:supabase": "node scripts/migrateToSupabase.js",
+    "verify:supabase": "node scripts/verifySupabaseMigration.js"
+  }
 }

@@ -104,6 +104,8 @@ export default function Authentication() {
   const routeTo = useNavigate();
   const location = useLocation();
   const { signIn, isLoaded } = useSignIn();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -123,6 +125,9 @@ export default function Authentication() {
   const handleClerkOAuth = async (strategy) => {
     if (!isLoaded) return;
     try {
+      if (isSignedIn) {
+        await signOut();
+      }
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/auth/sso-callback',
@@ -130,6 +135,11 @@ export default function Authentication() {
       });
     } catch (err) {
       console.error(err);
+      // Fallback if there's still an active session conflict
+      if (err.errors && err.errors[0]?.code === 'identifier_already_signed_in') {
+         routeTo('/auth/sso-callback');
+         return;
+      }
       toast.error('OAuth Sign-In failed');
     }
   };

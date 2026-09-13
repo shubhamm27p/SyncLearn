@@ -2,6 +2,8 @@
  * Centralized configuration — reads from .env and exports typed values.
  */
 module.exports = {
+  storageMode: process.env.MCQ_STORAGE_MODE || 'mongo',
+  compareReads: process.env.MCQ_COMPARE_READS === 'true',
   port: parseInt(process.env.PORT, 10) || 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/digital_microsys',

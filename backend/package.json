@@ -10,6 +10,8 @@
     "dev": "nodemon --env-file=.env src/app.js",
     "start": "node src/app.js",
     "prod": "pm2 src/app.js",
+    "migrate:supabase": "node src/mcq/scripts/migrateToSupabase.js",
+    "verify:supabase": "node src/mcq/scripts/verifySupabaseMigration.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --detectOpenHandles --forceExit"
   },
   "dependencies": {
