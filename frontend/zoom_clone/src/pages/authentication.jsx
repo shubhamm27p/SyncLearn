@@ -30,7 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { useSignIn, AuthenticateWithRedirectCallback, useAuth, useClerk } from '@clerk/clerk-react';
 
 const GitHubIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }} fill="currentColor">
