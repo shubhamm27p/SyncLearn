@@ -144,9 +144,6 @@ export default function Authentication() {
     }
   };
 
-  if (location.pathname.includes('/sso-callback')) {
-    return <AuthenticateWithRedirectCallback />;
-  }
 
   // 0: Log In, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
@@ -174,6 +171,10 @@ export default function Authentication() {
     handleForgotPassword,
     handleResetPassword
   } = useContext(AuthContext);
+
+  if (location.pathname.includes('/sso-callback')) {
+    return <AuthenticateWithRedirectCallback />;
+  }
 
   const handleAuth = async () => {
     setFieldErrors({});
