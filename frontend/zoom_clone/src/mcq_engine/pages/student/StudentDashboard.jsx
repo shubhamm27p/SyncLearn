@@ -37,7 +37,7 @@ const StudentDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const fetchData = async () => {
+  async function fetchData() {
     try {
       const [testsRes, resultsRes] = await Promise.all([
         API.get('/student/tests'),

@@ -23,7 +23,7 @@ const ManageStudents = () => {
 
   useEffect(() => { fetchStudents(); }, []);
 
-  const fetchStudents = async (query = '') => {
+  async function fetchStudents(query = '') {
     try {
       const res = await API.get(`/users/students${query ? `?search=${query}` : ''}`);
       if (res.data?.data) {

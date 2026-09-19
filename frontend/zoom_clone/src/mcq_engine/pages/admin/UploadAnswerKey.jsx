@@ -22,7 +22,7 @@ const UploadAnswerKey = () => {
 
   useEffect(() => { fetchData(); }, [id]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     try {
       const [testRes, qRes] = await Promise.all([
         API.get(`/tests/${id}`),

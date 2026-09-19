@@ -29,7 +29,7 @@ const UploadQuestions = () => {
 
   useEffect(() => { fetchExisting(); }, [id]);
 
-  const fetchExisting = async () => {
+  async function fetchExisting() {
     try {
       const [testRes, qRes] = await Promise.all([
         API.get(`/tests/${id}`),

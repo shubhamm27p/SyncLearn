@@ -22,7 +22,7 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchStats(); }, []);
 
-  const fetchStats = async () => {
+  async function fetchStats() {
     try {
       const res = await API.get('/tests/stats/dashboard');
       if (res.data?.data) {

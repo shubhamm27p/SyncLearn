@@ -49,7 +49,7 @@ const ViewResults = () => {
     }
   }, [selectedTest, preStudentId]);
 
-  const fetchTests = async () => {
+  async function fetchTests() {
     try {
       const res = await API.get('/tests');
       if (res.data?.data) {
@@ -63,8 +63,10 @@ const ViewResults = () => {
     finally { setInitialLoading(false); }
   };
 
-  const fetchResults = async (testId) => {
+  async function fetchResults(testId) {
     setLoading(true);
+    setTestInfo(null);
+    setResults([]);
     try {
       const res = await API.get(`/results/test/${testId}`);
       if (res.data?.data) {
@@ -83,8 +85,10 @@ const ViewResults = () => {
     finally { setLoading(false); }
   };
 
-  const fetchStudentResults = async (studentId) => {
+  async function fetchStudentResults(studentId) {
     setLoading(true);
+    setTestInfo(null);
+    setResults([]);
     try {
       const res = await API.get(`/results/student/${studentId}`);
       if (res.data?.data) {

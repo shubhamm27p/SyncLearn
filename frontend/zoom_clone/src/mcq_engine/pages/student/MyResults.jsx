@@ -16,7 +16,7 @@ const MyResults = () => {
 
   useEffect(() => { fetchResults(); }, []);
 
-  const fetchResults = async () => {
+  async function fetchResults() {
     try {
       const res = await API.get('/student/results');
       if (res.data?.data) {

@@ -30,7 +30,7 @@ const ManageTests = () => {
     fetchTests();
   }, []);
 
-  const fetchTests = async () => {
+  async function fetchTests() {
     try {
       const res = await API.get('/tests');
       if (res.data?.data) {
@@ -270,26 +270,32 @@ const ManageTests = () => {
                           >
                             <HiOutlinePencilSquare size={16} />
                           </Link>
-                          <Link to={`/admin/tests/${test._id}/questions`} title="Questions"
-                            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
-                          >
-                            <HiOutlineDocumentText size={16} />
-                          </Link>
-                          <Link to={`/admin/tests/${test._id}/answerkey`} title="Answer Key"
-                            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
-                          >
-                            <HiOutlineKey size={16} />
-                          </Link>
+                          {test.testType !== 'coding' && (
+                            <>
+                              <Link to={`/admin/tests/${test._id}/questions`} title="Questions"
+                                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                              >
+                                <HiOutlineDocumentText size={16} />
+                              </Link>
+                              <Link to={`/admin/tests/${test._id}/answerkey`} title="Answer Key"
+                                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                              >
+                                <HiOutlineKey size={16} />
+                              </Link>
+                            </>
+                          )}
                           <Link to={`/admin/results?testId=${test._id}`} title="Results"
                             style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
                           >
                             <HiOutlineChartBarSquare size={16} />
                           </Link>
-                          <Link to={`/admin/tests/${test._id}/coding`} title="Coding Problems"
-                            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
-                          >
-                            <HiOutlineCodeBracketSquare size={16} />
-                          </Link>
+                          {test.testType !== 'mcq' && (
+                            <Link to={`/admin/tests/${test._id}/coding`} title="Coding Problems"
+                              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}
+                            >
+                              <HiOutlineCodeBracketSquare size={16} />
+                            </Link>
+                          )}
                           <button onClick={() => openDeleteModal(test._id, test.title)} title="Delete"
                             style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '7px', cursor: 'pointer', color: '#ef4444', display: 'flex' }}
                           >

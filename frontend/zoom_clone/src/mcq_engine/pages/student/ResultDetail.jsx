@@ -22,7 +22,7 @@ const ResultDetail = () => {
 
   useEffect(() => { fetchResult(); }, [id]);
 
-  const fetchResult = async () => {
+  async function fetchResult() {
     try {
       const res = await API.get(`/student/results/${id}`);
       setResult(res.data.data);

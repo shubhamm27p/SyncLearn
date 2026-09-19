@@ -26,7 +26,7 @@ const CodingResults = () => {
     fetchSubmissions();
   }, [testId]);
 
-  const fetchSubmissions = async () => {
+  async function fetchSubmissions() {
     try {
       const res = await API.get(`/coding/${testId}/submissions`);
       setSubmissions(res.data.data || []);

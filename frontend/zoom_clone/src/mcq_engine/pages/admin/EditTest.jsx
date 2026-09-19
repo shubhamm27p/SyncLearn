@@ -38,7 +38,7 @@ const EditTest = () => {
 
   useEffect(() => { fetchTest(); }, [id]);
 
-  const fetchTest = async () => {
+  async function fetchTest() {
     try {
       const res = await API.get(`/tests/${id}`);
       const t = res.data.data;
