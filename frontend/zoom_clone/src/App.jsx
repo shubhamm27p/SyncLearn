@@ -43,6 +43,13 @@ const CombinedResult = lazy(() => import('./mcq_engine/pages/student/CombinedRes
 
 const ProtectedVideoMeetComponent = withAuth(VideoMeetComponent);
 
+const LoadingFallback = () => (
+  <div className="app-loading-wrapper">
+    <div className="app-loading-spinner"></div>
+    <div className="app-loading-text">Loading <span>SyncLearn</span>...</div>
+  </div>
+);
+
 function App() {
   return (
     <AppTheme>
@@ -51,66 +58,69 @@ function App() {
         <ErrorBoundary>
           <Router>
             <AuthProvider> 
-              <Suspense fallback={<div className="app-loading" aria-label="Loading" />}>
-              <Routes>
-              <Route path='/' element={<LandingPage />} />
-              <Route path='/about' element={<ApplicationDetails />} />
-              <Route path='/terms' element={<TermsAndConditions />} />
-              <Route path='/auth' element={<Authentication />} />
-              <Route path='/auth/sso-callback' element={<Authentication />} />
-              <Route path='/home' element={<HomeComponent />} />
-              <Route path='/history' element={<History />} />
-              <Route path='/admin-login' element={<AdminLogin />} />
-              <Route path='/admin' element={<AdminDashboard />} />
-              <Route path='/profile' element={<ProfileSettings />} />
-              <Route path='/settings' element={<ProfileSettings />} />
+              <Suspense fallback={<LoadingFallback />}>
+                <div className="page-transition-enter">
+                  <Routes>
+                    <Route path='/' element={<LandingPage />} />
+                    <Route path='/about' element={<ApplicationDetails />} />
+                    <Route path='/terms' element={<TermsAndConditions />} />
+                    <Route path='/auth' element={<Authentication />} />
+                    <Route path='/auth/sso-callback' element={<Authentication />} />
+                    <Route path='/home' element={<HomeComponent />} />
+                    <Route path='/history' element={<History />} />
+                    <Route path='/admin-login' element={<AdminLogin />} />
+                    <Route path='/admin' element={<AdminDashboard />} />
+                    <Route path='/profile' element={<ProfileSettings />} />
+                    <Route path='/settings' element={<ProfileSettings />} />
 
-              {/* Integrated MCQ Engine Shell */}
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
-                <Route element={<DashboardLayout />}>
-                  <Route path='/tests/create' element={<CreateTest />} />
-                  <Route path='/tests/gradebook' element={<ViewResults />} />
-                  <Route path='/admin/dashboard' element={<MCQAdminDashboard />} />
-                  <Route path='/admin/tests' element={<ManageTests />} />
-                  <Route path='/admin/tests/create' element={<CreateTest />} />
-                  <Route path='/admin/tests/:id/edit' element={<EditTest />} />
-                  <Route path='/admin/tests/:id/questions' element={<UploadQuestions />} />
-                  <Route path='/admin/tests/:id/answerkey' element={<UploadAnswerKey />} />
-                  <Route path='/admin/students' element={<ManageStudents />} />
-                  <Route path='/admin/results' element={<ViewResults />} />
-                  <Route path='/admin/tests/:id/coding' element={<ManageCodingProblems />} />
-                  <Route path='/admin/tests/:id/coding-results' element={<ViewCodingSubmissions />} />
-                </Route>
-              </Route>
+                    {/* Integrated MCQ Engine Shell */}
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
+                      <Route element={<DashboardLayout />}>
+                        <Route path='/tests/create' element={<CreateTest />} />
+                        <Route path='/tests/gradebook' element={<ViewResults />} />
+                        <Route path='/admin/dashboard' element={<MCQAdminDashboard />} />
+                        <Route path='/admin/tests' element={<ManageTests />} />
+                        <Route path='/admin/tests/create' element={<CreateTest />} />
+                        <Route path='/admin/tests/:id/edit' element={<EditTest />} />
+                        <Route path='/admin/tests/:id/questions' element={<UploadQuestions />} />
+                        <Route path='/admin/tests/:id/answerkey' element={<UploadAnswerKey />} />
+                        <Route path='/admin/students' element={<ManageStudents />} />
+                        <Route path='/admin/results' element={<ViewResults />} />
+                        <Route path='/admin/tests/:id/coding' element={<ManageCodingProblems />} />
+                        <Route path='/admin/tests/:id/coding-results' element={<ViewCodingSubmissions />} />
+                      </Route>
+                    </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
-                <Route element={<DashboardLayout />}>
-                  <Route path='/tests' element={<Dashboard />} />
-                  <Route path='/student/dashboard' element={<StudentDashboard />} />
-                  <Route path='/student/results' element={<MyResults />} />
-                  <Route path='/student/results/:id' element={<ResultDetail />} />
-                </Route>
-              </Route>
+                    <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
+                      <Route element={<DashboardLayout />}>
+                        <Route path='/tests' element={<Dashboard />} />
+                        <Route path='/student/dashboard' element={<StudentDashboard />} />
+                        <Route path='/student/results' element={<MyResults />} />
+                        <Route path='/student/results/:id' element={<ResultDetail />} />
+                      </Route>
+                    </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
-                <Route path='/admin/combined-result/:testId/:studentId' element={<AdminCombinedResult />} />
-              </Route>
+                    <Route element={<ProtectedRoute allowedRoles={['admin', 'trainer']} />}>
+                      <Route path='/admin/combined-result/:testId/:studentId' element={<AdminCombinedResult />} />
+                    </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
-                <Route path='/student/test/:id' element={<TakeTest />} />
-                <Route path='/test/:testId/take' element={<TakeTest />} />
-                <Route path='/student/coding-test/:id' element={<TakeCodingTest />} />
-                <Route path='/student/coding-results/:testId' element={<CodingResults />} />
-                <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
-              </Route>
+                    <Route element={<ProtectedRoute allowedRoles={['student', 'trainer', 'admin']} />}>
+                      <Route path='/student/test/:id' element={<TakeTest />} />
+                      <Route path='/test/:testId/take' element={<TakeTest />} />
+                      <Route path='/student/coding-test/:id' element={<TakeCodingTest />} />
+                      <Route path='/student/coding-results/:testId' element={<CodingResults />} />
+                      <Route path='/student/combined-result/:testId' element={<CombinedResult />} />
+                    </Route>
 
-              {/* Standalone Fullscreen MCQ & Coding Test Taking & Results */}
-              <Route path="/:url" element={<ProtectedVideoMeetComponent />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                    {/* Standalone Fullscreen MCQ & Coding Test Taking & Results */}
+                    <Route path="/:url" element={<ProtectedVideoMeetComponent />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
               </Suspense>
-          </AuthProvider>
-        </Router>
+            </AuthProvider>
+          </Router>
+
         </ErrorBoundary>
       </div>
     </AppTheme>

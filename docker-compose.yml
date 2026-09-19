@@ -1,0 +1,48 @@
+services:
+  # -----------------------------------------------------
+  # Frontend Service (Vite SPA served by Nginx)
+  # -----------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend/zoom_clone
+      dockerfile: Dockerfile
+    image: sync-learn-frontend:latest
+    container_name: sync-learn-frontend
+    ports:
+      - "3000:80"
+    # Load environment variables for the frontend.
+    # Keep in mind Vite bundles env vars at BUILD time. If you have build-time vars,
+    # use the 'args' block under 'build' instead. Runtime variables can be accessed
+    # if implemented properly in the app, or this just mounts them for other uses.
+    env_file:
+      # Use a placeholder path, ensure this file exists or remove if not needed
+      - ./frontend/zoom_clone/.env
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # -----------------------------------------------------
+  # Backend Service (Node.js API)
+  # -----------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: sync-learn-backend:latest
+    container_name: sync-learn-backend
+    ports:
+      # Assuming your backend listens on port 5000
+      - "5000:5000"
+    # Provide necessary environment variables to the backend container
+    env_file:
+      - ./backend/.env
+    networks:
+      - app-network
+    restart: unless-stopped
+
+# Define a custom bridge network for internal communication
+networks:
+  app-network:
+    driver: bridge
