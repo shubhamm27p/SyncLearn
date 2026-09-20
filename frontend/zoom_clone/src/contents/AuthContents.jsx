@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 export const AuthContext = createContext({});
 
 const serverUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -30,6 +30,10 @@ export const AuthProvider = ({children}) => {
     const [userData, setUserData] = useState(authContext);
     
     const router = useNavigate();
+
+    const { isLoaded: isAuthLoaded, isSignedIn } = useClerkAuth();
+    const { isLoaded: isUserLoaded, user: clerkUser } = useUser();
+    const [isAuthReady, setIsAuthReady] = useState(false);
 
     const getInitialUser = () => {
         try {
@@ -277,6 +281,42 @@ export const AuthProvider = ({children}) => {
         }
     };
 
+    useEffect(() => {
+        if (!isAuthLoaded) return;
+        
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
+        const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
+
+        if ((token && storedUser) || isAdmin) {
+            setIsAuthReady(true);
+            return;
+        }
+
+        if (isSignedIn) {
+            if (!isUserLoaded) return; // Wait for clerkUser to load
+            
+            if (clerkUser) {
+                const syncClerkWithBackend = async () => {
+                    try {
+                        const email = clerkUser.primaryEmailAddress?.emailAddress;
+                        const name = clerkUser.fullName || clerkUser.username || "User";
+                        const googleId = clerkUser.id;
+                        
+                        await handleGoogleLogin(email, name, googleId, "student");
+                        setIsAuthReady(true);
+                    } catch (error) {
+                        console.error("Failed to sync Clerk session with backend", error);
+                        setIsAuthReady(true); 
+                    }
+                };
+                syncClerkWithBackend();
+            }
+        } else {
+            setIsAuthReady(true); // Not signed into Clerk, auth check is complete
+        }
+    }, [isAuthLoaded, isSignedIn, isUserLoaded, clerkUser]);
+
     const data = {
         userData, 
         setUserData, 
@@ -304,7 +344,8 @@ export const AuthProvider = ({children}) => {
         updateSiteStatusApi,
         getMediaPermissionsApi,
         updateMediaPermissionApi,
-        getAgoraRtcTokenApi
+        getAgoraRtcTokenApi,
+        isAuthReady
     };
 
     return (
