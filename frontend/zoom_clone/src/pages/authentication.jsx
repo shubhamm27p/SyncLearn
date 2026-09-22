@@ -173,7 +173,7 @@ export default function Authentication() {
   } = useContext(AuthContext);
 
   if (location.pathname.includes('/sso-callback')) {
-    return <AuthenticateWithRedirectCallback />;
+    return <AuthenticateWithRedirectCallback signInFallbackRedirectUrl="/home" signUpFallbackRedirectUrl="/home" />;
   }
 
   const handleAuth = async () => {
