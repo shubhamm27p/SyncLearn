@@ -334,7 +334,6 @@ const googleLogin = async (req, res) => {
                 email: email,
                 username: email,
                 role: 'student',
-                google_id: googleId || `google_${Date.now()}`,
                 token: sessionToken
             }]).select().single();
             if (error) throw error;
@@ -344,7 +343,6 @@ const googleLogin = async (req, res) => {
                 return res.status(403).json({ message: "Your account has been disabled." });
             }
             const updateData = { token: sessionToken };
-            if (googleId) updateData.google_id = googleId;
             if (name && !user.name) updateData.name = name;
             if (!user.email) updateData.email = email;
             const { data: updatedUser, error } = await supabase.from('users').update(updateData).eq('id', user.id).select().single();

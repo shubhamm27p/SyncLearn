@@ -125,6 +125,7 @@ export default function Authentication() {
   const handleClerkOAuth = async (strategy) => {
     if (!isLoaded) return;
     try {
+      await signOut(); // Clear any stale session first
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/auth/sso-callback',
