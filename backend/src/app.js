@@ -131,6 +131,16 @@ app.use(express.urlencoded({limit: "40kb", extended: true}));
 // Routes
 app.use("/api/v1/users", userRouter);
 
+app.get('/api/debug-mongo', (req, res) => {
+    const mongoose = require('mongoose');
+    res.json({
+        readyState: mongoose.connection.readyState,
+        states: mongoose.STATES,
+        envSet: !!process.env.MONGO_URI,
+        uri: process.env.MONGO_URI?.substring(0, 30) + '...'
+    });
+});
+
 // Global Error Handler Middleware
 app.use(errorHandler);
 
