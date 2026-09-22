@@ -44,9 +44,17 @@ app.use(
         'http://localhost:5173',
         'http://localhost:3000',
       ].filter(Boolean);
-      if (allowedOrigins.includes(origin)) {
+      
+      // Allow specific origins, Vercel preview URLs, and the main frontend URL
+      if (
+        allowedOrigins.includes(origin) || 
+        /https:\/\/.*\.vercel\.app$/.test(origin) ||
+        (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL)
+      ) {
         return callback(null, true);
       }
+      
+      console.warn('CORS Blocked:', origin);
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
