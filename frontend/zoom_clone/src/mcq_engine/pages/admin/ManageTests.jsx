@@ -37,9 +37,9 @@ const ManageTests = () => {
         setTests(res.data.data);
       }
     } catch (err) {
-      console.warn("ManageTests API unavailable, loading local database:", err);
-      const localTests = JSON.parse(localStorage.getItem('viora_tests_db') || '[]');
-      setTests(localTests);
+      console.error("ManageTests API error:", err);
+      toast.error(err.response?.data?.message || err.message || "Failed to fetch tests. The backend may be down.");
+      setTests([]);
     } finally {
       setLoading(false);
     }
