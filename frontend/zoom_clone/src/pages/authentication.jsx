@@ -30,7 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { useSignIn, useSignUp, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const GitHubIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }} fill="currentColor">
@@ -103,11 +103,13 @@ const inputSx = {
 export default function Authentication() {
   const routeTo = useNavigate();
   const location = useLocation();
-  const { signIn, isLoaded } = useSignIn();
+  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
+  const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('student');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -121,7 +123,7 @@ export default function Authentication() {
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   
   const handleClerkOAuth = async (strategy) => {
-    if (!isLoaded) return;
+    if (!isSignInLoaded) return;
     try {
       if (localStorage.getItem('token')) {
         goAfterAuthentication();
@@ -134,21 +136,39 @@ export default function Authentication() {
         redirectUrlComplete: `${origin}/home`
       });
     } catch (err) {
-      console.error(err);
+      console.error('Clerk OAuth error:', err);
       if (err.errors && err.errors[0]?.code === 'identifier_already_signed_in') {
          if (localStorage.getItem('token')) {
            routeTo('/home', { replace: true });
          } else {
-           toast.error('Your Google session is active but the app session is still being created. Please wait a moment.');
+           toast.error('Your session is active but the app session is still being created. Please wait a moment.');
          }
          return;
       }
-      toast.error('OAuth Sign-In failed');
+      // If sign in failed, attempt sign up with redirect (handles new OAuth users)
+      if (signUp && isSignUpLoaded) {
+        try {
+          const origin = window.location.origin;
+          await signUp.authenticateWithRedirect({
+            strategy,
+            redirectUrl: `${origin}/auth/sso-callback`,
+            redirectUrlComplete: `${origin}/home`
+          });
+          return;
+        } catch (signUpErr) {
+          console.error('Clerk OAuth SignUp error:', signUpErr);
+          const detail = signUpErr.errors?.[0]?.longMessage || signUpErr.errors?.[0]?.message || signUpErr.message || err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message;
+          toast.error(detail || 'OAuth Sign-In failed');
+          return;
+        }
+      }
+      const detail = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message;
+      toast.error(detail || 'OAuth Sign-In failed');
     }
   };
 
 
-  // 0: Log In, 2: Forgot Password, 3: Reset Password
+  // 0: Log In, 1: Register/Sign Up, 2: Forgot Password, 3: Reset Password
   const [formState, setFormState] = useState(0);
   const [open, setOpen] = useState(false);
 
@@ -223,6 +243,13 @@ export default function Authentication() {
     if (formState === 0) {
       if (!username) errors.username = "Username/Email is required";
       if (!password) errors.password = "Password is required";
+    } else if (formState === 1) {
+      if (!name || !name.trim()) errors.name = "Full name is required";
+      if (!username || !username.trim()) errors.username = "Username/Email is required";
+      if (!password) errors.password = "Password is required";
+      else if (password.length < 6) errors.password = "Password must be at least 6 characters";
+      if (!confirmPassword) errors.confirmPassword = "Please confirm your password";
+      else if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match";
     } else if (formState === 2) {
       if (!username) errors.username = "Username/Email is required";
     } else if (formState === 3) {
@@ -245,6 +272,15 @@ export default function Authentication() {
         setOpen(true);
         setError('');
         goAfterAuthentication();
+      } else if (formState === 1) {
+        let result = await handleRegister(name.trim(), username.trim(), password, role);
+        setMessage(result || 'Account created successfully! Please sign in.');
+        setOpen(true);
+        setError('');
+        toast.success('Registration successful! You can now log in.');
+        setFormState(0);
+        setPassword('');
+        setConfirmPassword('');
       } else if (formState === 2) {
         let result = await handleForgotPassword(username);
         setMessage(result.message || 'A password reset code was sent to your email.');
@@ -332,17 +368,39 @@ export default function Authentication() {
             SyncLearn
           </Typography>
           <Typography variant="body2" sx={{ color: '#667085', fontSize: '14px', mb: 3, textAlign: 'center' }}>
-            {formState === 0 && 'Sign in to access your meeting rooms'}
+            {formState === 0 && 'Sign in to access your meeting rooms and tests'}
+            {formState === 1 && 'Create an account to join live classes & exams'}
             {formState === 2 && 'Enter your username or email to receive a reset code'}
             {formState === 3 && 'Enter your reset code and new password'}
           </Typography>
 
           {/* Form Fields Section */}
           <Box component="form" noValidate sx={{ width: '100%' }}>
-            {(formState === 0 || formState === 2 || formState === 3) && (
+            {formState === 1 && (
               <Box sx={{ mb: 2 }}>
                 <Typography component="label" sx={labelSx}>
-                  {formState === 2 ? "Username or Email" : "Username / Email"}
+                  Full Name
+                </Typography>
+                <TextField
+                  hiddenLabel
+                  placeholder="Enter your full name"
+                  fullWidth
+                  id="name"
+                  name="name"
+                  autoFocus={formState === 1}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  sx={inputSx}
+                  error={!!fieldErrors.name}
+                  helperText={fieldErrors.name}
+                />
+              </Box>
+            )}
+
+            {(formState === 0 || formState === 1 || formState === 2 || formState === 3) && (
+              <Box sx={{ mb: 2 }}>
+                <Typography component="label" sx={labelSx}>
+                  {formState === 2 ? "Username or Email" : (formState === 1 ? "Username / Email Address" : "Username / Email")}
                 </Typography>
                 <TextField
                   hiddenLabel
@@ -358,6 +416,35 @@ export default function Authentication() {
                   error={!!fieldErrors.username}
                   helperText={fieldErrors.username}
                 />
+              </Box>
+            )}
+
+            {formState === 1 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography component="label" sx={labelSx}>
+                  Account Type / Role
+                </Typography>
+                <Select
+                  fullWidth
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  sx={{
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: '#111827',
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: '#d1d5db' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#9ca3af' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: '#0e71eb',
+                      boxShadow: '0 0 0 2px rgba(14, 113, 235, 0.2)',
+                    },
+                    '& .MuiSelect-select': { padding: '10px 14px' }
+                  }}
+                >
+                  <MenuItem value="student">Student (Take Tests & Attend Meetings)</MenuItem>
+                  <MenuItem value="trainer">Trainer / Instructor (Host Meetings & Manage Tests)</MenuItem>
+                </Select>
               </Box>
             )}
 
@@ -423,7 +510,7 @@ export default function Authentication() {
               </>
             )}
 
-            {(formState === 0) && (
+            {(formState === 0 || formState === 1) && (
               <Box sx={{ mb: 1 }}>
                 <Typography component="label" sx={labelSx}>
                   Password
@@ -435,7 +522,7 @@ export default function Authentication() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   id="password"
-                  autoComplete="current-password"
+                  autoComplete={formState === 0 ? "current-password" : "new-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   InputProps={{
@@ -483,6 +570,27 @@ export default function Authentication() {
               </Box>
             )}
 
+            {formState === 1 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography component="label" sx={labelSx}>
+                  Confirm Password
+                </Typography>
+                <TextField
+                  hiddenLabel
+                  placeholder="Re-enter password to confirm"
+                  fullWidth
+                  name="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  sx={inputSx}
+                  error={!!fieldErrors.confirmPassword}
+                  helperText={fieldErrors.confirmPassword}
+                />
+              </Box>
+            )}
+
             {error && (
               <Alert severity="error" sx={{ mt: 2, width: '100%', borderRadius: '8px', bgcolor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
                 {error}
@@ -516,11 +624,43 @@ export default function Authentication() {
               {isLoading ? <CircularProgress size={24} color="inherit" /> : (
                 <>
                   {formState === 0 && 'Sign In'}
+                  {formState === 1 && 'Create Account'}
                   {formState === 2 && 'Send Reset Code to Email'}
                   {formState === 3 && 'Reset Password'}
                 </>
               )}
             </Button>
+
+            {/* Toggle Between Sign In and Sign Up */}
+            {formState === 0 && (
+              <Box sx={{ textAlign: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px' }}>
+                  Don't have an account?{' '}
+                  <Typography
+                    component="span"
+                    onClick={() => { setFormState(1); setError(''); setFieldErrors({}); }}
+                    sx={{ color: '#0e71eb', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    Sign Up
+                  </Typography>
+                </Typography>
+              </Box>
+            )}
+
+            {formState === 1 && (
+              <Box sx={{ textAlign: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ color: '#6b7280', fontSize: '13px' }}>
+                  Already have an account?{' '}
+                  <Typography
+                    component="span"
+                    onClick={() => { setFormState(0); setError(''); setFieldErrors({}); }}
+                    sx={{ color: '#0e71eb', fontWeight: 600, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    Sign In
+                  </Typography>
+                </Typography>
+              </Box>
+            )}
 
             {(formState === 2 || formState === 3) && (
               <Button
@@ -534,7 +674,7 @@ export default function Authentication() {
               </Button>
             )}
 
-            {(formState === 0) && (
+            {(formState === 0 || formState === 1) && (
               <>
                 <Divider sx={{ my: 2.5, fontSize: '12px', color: '#9ca3af', '&::before, &::after': { borderColor: '#e5e7eb' } }}>
                   OR
@@ -562,7 +702,7 @@ export default function Authentication() {
                     }
                   }}
                 >
-                  <GoogleIcon /> Sign in with Google
+                  <GoogleIcon /> {formState === 1 ? 'Sign up with Google' : 'Sign in with Google'}
                 </Button>
                 
                 <Button
@@ -588,7 +728,7 @@ export default function Authentication() {
                     }
                   }}
                 >
-                  <GitHubIcon /> Sign in with GitHub
+                  <GitHubIcon /> {formState === 1 ? 'Sign up with GitHub' : 'Sign in with GitHub'}
                 </Button>
               </>
             )}

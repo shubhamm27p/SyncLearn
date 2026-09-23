@@ -5,9 +5,9 @@ const resultController = require('../controllers/resultController');
 const { protect, authorize } = require('../middleware/auth');
 const Result = require('../models/Result');
 
-// All student routes require authentication + student role
+// All student routes require authentication (students, trainers, and admins for testing)
 router.use(protect);
-router.use(authorize('student'));
+router.use(authorize('student', 'trainer', 'admin'));
 
 // Tests
 router.get('/tests', studentTestController.getAvailableTests);
@@ -22,12 +22,13 @@ router.get('/results/:id', studentTestController.getResultDetail);
 router.get(
   '/results/:id/pdf',
   async (req, res, next) => {
-    // Verify student owns this result
+    // Verify student owns this result or user is trainer/admin
     const result = await Result.findById(req.params.id);
     if (!result) {
       return res.status(404).json({ message: 'Result not found' });
     }
-    if (result.studentId.toString() !== req.user._id.toString()) {
+    const isStaff = req.user.role === 'admin' || req.user.role === 'trainer';
+    if (!isStaff && result.studentId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
     next();

@@ -98,14 +98,27 @@ exports.submitTest = async (req, res, next) => {
 
     // Save violations
     if (violations && violations.length > 0) {
-      const violationDocs = violations.map((v) => ({
-        studentId: req.user._id,
-        testId,
-        violationType: v.type,
-        timestamp: v.timestamp || new Date(),
-        description: v.description || '',
-      }));
-      await Violation.insertMany(violationDocs);
+      const VALID_VIOLATIONS = [
+        'tab-switch', 'window-blur', 'copy-paste', 'right-click',
+        'fullscreen-exit', 'devtools-open', 'devtools', 'escape',
+        'timerExpired', 'multiple-monitors', 'other'
+      ];
+      const violationDocs = violations.map((v) => {
+        const rawType = v?.type || 'other';
+        const violationType = VALID_VIOLATIONS.includes(rawType) ? rawType : 'other';
+        return {
+          studentId: req.user._id,
+          testId,
+          violationType,
+          timestamp: v.timestamp || new Date(),
+          description: v.description || (violationType === 'other' ? String(rawType) : ''),
+        };
+      });
+      try {
+        await Violation.insertMany(violationDocs);
+      } catch (violErr) {
+        console.warn('Non-fatal violation logging warning:', violErr.message);
+      }
     }
 
     const result = await Result.create({

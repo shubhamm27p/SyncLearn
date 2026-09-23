@@ -368,19 +368,30 @@ exports.submitTest = async (req, res, next) => {
       unattemptedCount: evaluation.unattemptedCount
     });
 
-    // Save violations to Violation model
+    // Save violations to Violation model safely
+    const VALID_VIOLATIONS = [
+      'tab-switch', 'window-blur', 'copy-paste', 'right-click',
+      'fullscreen-exit', 'devtools-open', 'devtools', 'escape',
+      'timerExpired', 'multiple-monitors', 'other'
+    ];
     const violationDocs = [];
     if (violations && violations.length > 0) {
       violations.forEach((v) => {
+        const rawType = v?.type || 'other';
+        const violationType = VALID_VIOLATIONS.includes(rawType) ? rawType : 'other';
         violationDocs.push({
           studentId: req.user._id,
           testId: test._id,
-          violationType: v.type,
+          violationType,
           timestamp: v.timestamp || new Date(),
-          description: v.description || '',
+          description: v.description || (violationType === 'other' ? String(rawType) : ''),
         });
       });
-      await Violation.insertMany(violationDocs);
+      try {
+        await Violation.insertMany(violationDocs);
+      } catch (violErr) {
+        console.warn('Non-fatal violation logging warning:', violErr.message);
+      }
     }
 
     // Create result

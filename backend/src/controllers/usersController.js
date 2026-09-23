@@ -253,12 +253,14 @@ const register = async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        const assignedRole = req.body.role === 'trainer' ? 'trainer' : 'student';
+
         const { error } = await supabase.from('users').insert([{
             name: name.trim(),
             username: cleanUser,
             email: targetEmail,
             password: hashedPassword,
-            role: 'student'
+            role: assignedRole
         }]);
 
         if (error) throw error;

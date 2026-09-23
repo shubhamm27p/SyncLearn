@@ -23,6 +23,51 @@ const LANGUAGE_CONFIG = {
   }
 };
 
+const PISTON_API = 'https://emkc.org/api/v2/piston/execute';
+
+const PISTON_LANG_MAP = {
+  c: { language: 'c', version: '*', fileName: 'main.c' },
+  python: { language: 'python', version: '*', fileName: 'main.py' },
+  java: { language: 'java', version: '*', fileName: 'Main.java' }
+};
+
+const executeWithPiston = async (language, sourceCode, stdin = '') => {
+  const pConfig = PISTON_LANG_MAP[language];
+  if (!pConfig) {
+    throw new Error('Unsupported language for Piston: ' + language);
+  }
+
+  console.log('[Piston Engine] Executing code via public compiler...');
+  const response = await axios.post(
+    PISTON_API,
+    {
+      language: pConfig.language,
+      version: pConfig.version,
+      files: [{ name: pConfig.fileName, content: sourceCode }],
+      stdin: stdin || ''
+    },
+    {
+      timeout: 15000,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
+
+  const run = response.data?.run || {};
+  const stdout = run.stdout || '';
+  const stderr = run.stderr || '';
+  const output = run.output || stdout || stderr || '';
+  const isSuccess = run.code === 0 && !stderr;
+
+  return {
+    success: isSuccess,
+    status: isSuccess ? 'Success' : (stderr.includes('Error') ? 'Runtime Error' : 'Compile Error'),
+    stdout: output,
+    stderr: stderr || (isSuccess ? '' : output),
+    time: '0.1',
+    memory: '1024'
+  };
+};
+
 const executeCode = async (
   language, 
   sourceCode, 
@@ -37,103 +82,82 @@ const executeCode = async (
     );
   }
 
-  console.log('[JDoodle] Executing:', {
-    language: config.language,
-    versionIndex: config.versionIndex,
-    stdinLength: stdin?.length || 0,
-    codeLength: sourceCode?.length || 0
-  });
+  const hasJDoodle = process.env.JDOODLE_CLIENT_ID && process.env.JDOODLE_CLIENT_SECRET;
 
-  const requestBody = {
-    clientId: process.env.JDOODLE_CLIENT_ID,
-    clientSecret: 
-      process.env.JDOODLE_CLIENT_SECRET,
-    script: sourceCode,
-    language: config.language,
-    versionIndex: config.versionIndex,
-    stdin: stdin || ''
-  };
+  if (hasJDoodle) {
+    try {
+      console.log('[JDoodle] Executing:', {
+        language: config.language,
+        versionIndex: config.versionIndex,
+        stdinLength: stdin?.length || 0,
+        codeLength: sourceCode?.length || 0
+      });
 
-  // Verify credentials exist
-  if (!requestBody.clientId || 
-      !requestBody.clientSecret) {
-    throw new Error(
-      'JDoodle credentials missing. ' +
-      'Set JDOODLE_CLIENT_ID and ' +
-      'JDOODLE_CLIENT_SECRET in .env'
-    );
-  }
+      const requestBody = {
+        clientId: process.env.JDOODLE_CLIENT_ID,
+        clientSecret: process.env.JDOODLE_CLIENT_SECRET,
+        script: sourceCode,
+        language: config.language,
+        versionIndex: config.versionIndex,
+        stdin: stdin || ''
+      };
 
-  const response = await axios.post(
-    JDOODLE_API,
-    requestBody,
-    {
-      timeout: 15000,
-      headers: {
-        'Content-Type': 'application/json'
+      const response = await axios.post(
+        JDOODLE_API,
+        requestBody,
+        {
+          timeout: 12000,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const result = response.data;
+      const rawOutput = result.output || '';
+      const statusCode = result.statusCode || 200;
+
+      if (statusCode === 200) {
+        const hasCompileError = 
+          rawOutput.includes('error:') ||
+          rawOutput.includes('Error:') ||
+          rawOutput.includes('SyntaxError') ||
+          rawOutput.includes('IndentationError') ||
+          rawOutput.includes('NameError') ||
+          rawOutput.includes('TypeError') ||
+          rawOutput.includes('Exception in thread') ||
+          rawOutput.includes('Traceback') ||
+          statusCode === 400;
+
+        return {
+          success: !hasCompileError,
+          status: hasCompileError ? 'Runtime Error' : 'Success',
+          stdout: rawOutput,
+          stderr: hasCompileError ? rawOutput : '',
+          time: result.cpuTime || '0',
+          memory: result.memory || '0'
+        };
       }
+      console.warn('[JDoodle] Non-200 response, switching to Piston fallback:', statusCode);
+    } catch (jdoodleErr) {
+      console.warn('[JDoodle] Execution failed, falling back to Piston:', jdoodleErr.message);
     }
-  );
-
-  const result = response.data;
-  const rawOutput = result.output || '';
-  const statusCode = result.statusCode || 200;
-
-  console.log('[JDoodle] RAW response:', {
-    statusCode,
-    output: rawOutput,
-    memory: result.memory,
-    cpuTime: result.cpuTime
-  });
-
-  // JDoodle status codes:
-  // 200 = success
-  // 400 = bad request  
-  // 401 = invalid credentials
-  // 429 = rate limit exceeded
-  // 500+ = server error
-
-  if (statusCode === 401) {
-    throw new Error(
-      'Invalid JDoodle credentials. ' +
-      'Check JDOODLE_CLIENT_ID and ' +
-      'JDOODLE_CLIENT_SECRET'
-    );
   }
 
-  if (statusCode === 429) {
-    throw new Error(
-      'JDoodle daily limit reached (200/day). ' +
-      'Try again tomorrow or upgrade plan.'
-    );
+  // Fallback to Piston API
+  try {
+    return await executeWithPiston(language, sourceCode, stdin);
+  } catch (pistonErr) {
+    console.error('[Execution Error] Both compilers failed:', pistonErr.message);
+    return {
+      success: false,
+      status: 'Execution Error',
+      stdout: '',
+      stderr: `Code execution failed: ${pistonErr.message}. Ensure internet connection is available.`,
+      time: '0',
+      memory: '0'
+    };
   }
-
-  // Detect errors in output
-  // JDoodle mixes stdout + stderr 
-  // in the same "output" field
-  const hasCompileError = 
-    rawOutput.includes('error:') ||
-    rawOutput.includes('Error:') ||
-    rawOutput.includes('SyntaxError') ||
-    rawOutput.includes('IndentationError') ||
-    rawOutput.includes('NameError') ||
-    rawOutput.includes('TypeError') ||
-    rawOutput.includes('Exception in thread') ||
-    rawOutput.includes('Traceback') ||
-    statusCode === 400;
-
-  return {
-    success: !hasCompileError,
-    status: hasCompileError 
-      ? 'Runtime Error' 
-      : 'Success',
-    stdout: rawOutput,
-    // Send all output as stdout
-    // even errors — let frontend display it
-    stderr: hasCompileError ? rawOutput : '',
-    time: result.cpuTime || '0',
-    memory: result.memory || '0'
-  };
 };
 
 module.exports = { executeCode };

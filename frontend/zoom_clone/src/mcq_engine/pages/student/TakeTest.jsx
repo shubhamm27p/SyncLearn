@@ -183,7 +183,9 @@ const ActiveTest = ({ testData }) => {
 
   useProctor(true, handleViolation);
 
-  const rawDuration = testData?.duration || 2400;
+  const rawDuration = (testData?.duration && testData.duration <= 300)
+    ? testData.duration * 60
+    : (testData?.duration || 2400);
   const { displayTime, isWarning, isCritical, secondsLeft } = useTimer(
     rawDuration,
     handleTimerExpire
@@ -436,7 +438,7 @@ const TakeTest = () => {
 
   if (!testStarted) {
     const durationMins = testData?.duration 
-      ? Math.round(testData.duration / 60) 
+      ? (testData.duration > 300 ? Math.round(testData.duration / 60) : testData.duration) 
       : 40;
 
     return (

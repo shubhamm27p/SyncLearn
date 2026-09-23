@@ -51,12 +51,12 @@ router.get(
     }
   }
 );
-// ─── Student Routes ───
-router.get('/:testId/student-problems', protect, authorize('student'), getStudentProblems);
-router.post('/run', protect, authorize('student'), runCode);
+// ─── Student Routes (Accessible to students, trainers, and admins for testing) ───
+router.get('/:testId/student-problems', protect, authorize('student', 'trainer', 'admin'), getStudentProblems);
+router.post('/run', protect, authorize('student', 'trainer', 'admin'), runCode);
 router.get('/submissions/:id', protect, getSubmissionById);
-router.post('/problems/:id/submit', protect, authorize('student'), submitSolution);
-router.get('/:testId/submissions', protect, authorize('student'), getSubmissions);
+router.post('/problems/:id/submit', protect, authorize('student', 'trainer', 'admin'), submitSolution);
+router.get('/:testId/submissions', protect, authorize('student', 'trainer', 'admin'), getSubmissions);
 
 router.get('/combined-result/:testId', protect, getCombinedResult);
 

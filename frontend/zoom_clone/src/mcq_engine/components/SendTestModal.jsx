@@ -16,7 +16,9 @@ const SendTestModal = ({ isOpen, onClose, test }) => {
   if (!isOpen || !test) return null;
 
   const testId = test._id || test.id;
-  const directLink = `${window.location.origin}/student/test/${testId}`;
+  const directLink = test.testType === 'coding'
+    ? `${window.location.origin}/student/coding-test/${testId}`
+    : `${window.location.origin}/student/test/${testId}`;
   const accessPin = test.accessCode || `SYNC-${String(testId).slice(-4).toUpperCase()}`;
 
   const messageText = `📚 Test: ${test.title}
