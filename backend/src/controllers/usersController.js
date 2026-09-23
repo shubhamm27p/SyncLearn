@@ -8,6 +8,12 @@ import { sendPasswordResetCodeEmail, sendSupportTicketEmail } from "../utils/sen
 let inMemorySiteStatus = true;
 let siteStatusCache = { value: null, expiresAt: 0 };
 
+// Sanitizes user inputs to prevent PostgREST .or() filter syntax injection
+const sanitizeFilterValue = (val) => {
+    if (typeof val !== 'string') return '';
+    return val.replace(/[,.:()"\\]/g, '').trim();
+};
+
 export const getSiteOnlineStatus = async () => {
     if (siteStatusCache.expiresAt > Date.now()) {
         return siteStatusCache.value;
@@ -92,7 +98,10 @@ const login = async (req, res) => {
     }
 
     try {
-        const cleanInput = username.trim();
+        const cleanInput = sanitizeFilterValue(username);
+        if (!cleanInput) {
+            return res.status(400).json({ message: "Invalid username or email format" });
+        }
         const defaultAdminUser = process.env.ADMIN_USERNAME || 'synclearn_admin';
         const defaultAdminPass = process.env.ADMIN_PASSWORD || 'SyncAdmin@2026!';
 
@@ -119,7 +128,7 @@ const login = async (req, res) => {
                         password: hashedPassword,
                         role: 'admin',
                         is_active: true
-                    }]).select()
+                    }]).select('id, name, username, email, role, is_active')
                 );
 
                 user = newAdmin || {
@@ -181,7 +190,7 @@ const login = async (req, res) => {
         }
     } catch (e) {
         console.error("Login error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "An unexpected error occurred during login. Please try again later." });
     }
 };
 
@@ -200,14 +209,18 @@ const register = async (req, res) => {
         if (await getSiteOnlineStatus() === false) {
             return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
-        const targetEmail = username.includes("@") ? username : `${username}@synclearn.edu`;
+        const cleanUser = sanitizeFilterValue(username);
+        if (!cleanUser) {
+            return res.status(400).json({ message: "Invalid username format" });
+        }
+        const targetEmail = cleanUser.includes("@") ? cleanUser : `${cleanUser}@synclearn.edu`;
 
         // Ensure no two users have the same username OR email
         const { data: existingUser } = await fetchSingleRecord(
             supabase
                 .from('users')
-                .select('*')
-                .or(`username.eq.${username},email.eq.${username},username.eq.${targetEmail},email.eq.${targetEmail}`)
+                .select('id')
+                .or(`username.eq.${cleanUser},email.eq.${cleanUser},username.eq.${targetEmail},email.eq.${targetEmail}`)
         );
 
         if (existingUser) {
@@ -217,8 +230,8 @@ const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const { error } = await supabase.from('users').insert([{
-            name: name,
-            username: username,
+            name: name.trim(),
+            username: cleanUser,
             email: targetEmail,
             password: hashedPassword,
             role: 'student'
@@ -229,7 +242,7 @@ const register = async (req, res) => {
         return res.status(201).json({ message: "User Registered Successfully!" });
     } catch (e) {
         console.error("Register error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "An unexpected error occurred during registration. Please try again later." });
     }
 };
 
@@ -241,10 +254,9 @@ const getUserHistory = async (req, res) => {
     }
 
     try {
-        const user = req.user;
-        const username = user?.username || req.query?.username;
+        const username = req.user?.username;
         if (!username) {
-            return res.status(400).json({ message: "User context not found" });
+            return res.status(401).json({ message: "User context not found" });
         }
 
         const { data: meetings, error: meetingsError } = await supabase
@@ -254,9 +266,10 @@ const getUserHistory = async (req, res) => {
             .order('created_at', { ascending: false });
         if (meetingsError) throw meetingsError;
 
-        return res.json(meetings);
+        return res.json(meetings || []);
     } catch (e) {
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        console.error("getUserHistory error:", e);
+        return res.status(500).json({ message: "Failed to retrieve meeting history." });
     }
 };
 
@@ -275,7 +288,7 @@ const clearUserHistory = async (req, res) => {
     try {
         const username = req.user?.username;
         if (!username) {
-            return res.status(400).json({ message: "User context missing" });
+            return res.status(401).json({ message: "User context missing" });
         }
 
         const { error: deleteError } = await supabase.from('meetings').delete().eq('user_id', username);
@@ -284,7 +297,7 @@ const clearUserHistory = async (req, res) => {
         return res.status(200).json({ message: "Meeting history cleared successfully" });
     } catch (e) {
         console.error("clearUserHistory error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to clear meeting history." });
     }
 };
 
@@ -299,20 +312,21 @@ const deleteMeetingFromHistory = async (req, res) => {
     try {
         const username = req.user?.username;
         if (!username) {
-            return res.status(400).json({ message: "User context missing" });
+            return res.status(401).json({ message: "User context missing" });
         }
 
+        const cleanMeetingId = sanitizeFilterValue(id);
         const { error } = await supabase.from('meetings')
             .delete()
             .eq('user_id', username)
-            .or(`id.eq.${id},meeting_id.eq.${id}`);
+            .or(`id.eq.${cleanMeetingId},meeting_id.eq.${cleanMeetingId}`);
 
         if (error) throw error;
 
         return res.status(200).json({ message: "Meeting deleted from history" });
     } catch (e) {
         console.error("deleteMeetingFromHistory error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to delete meeting from history." });
     }
 };
 
@@ -324,18 +338,27 @@ const googleLogin = async (req, res) => {
     }
 
     try {
-        let { data: user } = await supabase.from('users').select('*').or(`email.eq.${email},username.eq.${email}`).maybeSingle();
+        const cleanEmail = sanitizeFilterValue(email);
+        if (!cleanEmail) {
+            return res.status(400).json({ message: "Invalid email format" });
+        }
+
+        let { data: user } = await supabase
+            .from('users')
+            .select('id, name, username, email, role, is_active')
+            .or(`email.eq.${cleanEmail},username.eq.${cleanEmail}`)
+            .maybeSingle();
         
         const sessionToken = crypto.randomBytes(20).toString("hex");
 
         if (!user) {
             const { data: newUser, error } = await supabase.from('users').insert([{
-                name: name || email.split('@')[0],
-                email: email,
-                username: email,
+                name: name ? name.trim() : cleanEmail.split('@')[0],
+                email: cleanEmail,
+                username: cleanEmail,
                 role: 'student',
                 token: sessionToken
-            }]).select().single();
+            }]).select('id, name, username, email, role, is_active').single();
             if (error) throw error;
             user = newUser;
         } else {
@@ -343,9 +366,9 @@ const googleLogin = async (req, res) => {
                 return res.status(403).json({ message: "Your account has been disabled." });
             }
             const updateData = { token: sessionToken };
-            if (name && !user.name) updateData.name = name;
-            if (!user.email) updateData.email = email;
-            const { data: updatedUser, error } = await supabase.from('users').update(updateData).eq('id', user.id).select().single();
+            if (name && !user.name) updateData.name = name.trim();
+            if (!user.email) updateData.email = cleanEmail;
+            const { data: updatedUser, error } = await supabase.from('users').update(updateData).eq('id', user.id).select('id, name, username, email, role, is_active').single();
             if (error) throw error;
             user = updatedUser;
         }
@@ -361,7 +384,7 @@ const googleLogin = async (req, res) => {
         });
     } catch (e) {
         console.error("Google Login error:", e);
-        return res.status(500).json({ message: `Google Sign-In failed: ${e.message || e}` });
+        return res.status(500).json({ message: "Google Sign-In failed. Please try again." });
     }
 };
 
@@ -373,7 +396,17 @@ const forgotPassword = async (req, res) => {
     }
 
     try {
-        const { data: user, error: userError } = await supabase.from('users').select('*').or(`username.eq.${username},email.eq.${username}`).maybeSingle();
+        const cleanUser = sanitizeFilterValue(username);
+        if (!cleanUser) {
+            return res.status(400).json({ message: "Invalid username or email format" });
+        }
+
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('id, username, email')
+            .or(`username.eq.${cleanUser},email.eq.${cleanUser}`)
+            .maybeSingle();
+
         if (userError || !user) {
             return res.status(404).json({ message: "No account found with that username or email." });
         }
@@ -395,7 +428,7 @@ const forgotPassword = async (req, res) => {
         });
     } catch (e) {
         console.error("Forgot Password error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to process password reset request. Please try again later." });
     }
 };
 
@@ -411,9 +444,14 @@ const resetPassword = async (req, res) => {
     }
 
     try {
+        const cleanUser = sanitizeFilterValue(username);
+        if (!cleanUser) {
+            return res.status(400).json({ message: "Invalid username or email format" });
+        }
+
         const { data: user, error: userError } = await supabase.from('users')
-            .select('*')
-            .or(`username.eq.${username},email.eq.${username}`)
+            .select('id')
+            .or(`username.eq.${cleanUser},email.eq.${cleanUser}`)
             .eq('reset_password_token', resetToken)
             .gte('reset_password_expires', new Date().toISOString())
             .maybeSingle();
@@ -435,7 +473,7 @@ const resetPassword = async (req, res) => {
         return res.status(200).json({ message: "Password updated successfully! You can now log in." });
     } catch (e) {
         console.error("Reset Password error:", e);
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to reset password. Please try again." });
     }
 };
 
@@ -452,7 +490,8 @@ const getUserProfile = async (req, res) => {
             role: user.role || "student"
         });
     } catch (e) {
-        return res.status(500).json({ message: `Something went wrong: ${e.message || e}` });
+        console.error("getUserProfile error:", e);
+        return res.status(500).json({ message: "Failed to load user profile." });
     }
 };
 
@@ -523,10 +562,13 @@ const createQuiz = async (req, res) => {
 };
 
 const submitQuizAnswer = async (req, res) => {
-    const { quizId, meetingId, studentUsername, studentName, selectedOptionIndex } = req.body || {};
+    const { quizId, meetingId, studentUsername: bodyUsername, studentName: bodyName, selectedOptionIndex } = req.body || {};
+
+    const studentUsername = req.user?.username || bodyUsername;
+    const studentName = req.user?.name || bodyName || studentUsername;
 
     if (!quizId || !meetingId || !studentUsername || selectedOptionIndex === undefined) {
-        return res.status(400).json({ message: "Please provide quizId, meetingId, studentUsername, and selectedOptionIndex." });
+        return res.status(400).json({ message: "Please provide quizId, meetingId, and selectedOptionIndex." });
     }
 
     try {
@@ -551,7 +593,7 @@ const submitQuizAnswer = async (req, res) => {
             quiz_id: quizId,
             meeting_id: meetingId,
             student_username: studentUsername,
-            student_name: studentName || studentUsername,
+            student_name: studentName,
             selected_option_index: Number(selectedOptionIndex),
             is_correct: isCorrect,
             submitted_at: new Date().toISOString()
@@ -606,11 +648,16 @@ const getQuizRecords = async (req, res) => {
         if (meetingId) memSubs = memSubs.filter(s => s.meeting_id === meetingId);
         if (quizId) memSubs = memSubs.filter(s => s.quiz_id === quizId);
 
-        const combined = [...dbSubmissions];
+        let combined = [...dbSubmissions];
         for (const sub of memSubs) {
             if (!combined.some(s => s.id === sub.id || (s.student_username === sub.student_username && s.quiz_id === sub.quiz_id))) {
                 combined.push(sub);
             }
+        }
+
+        // Students only see their own quiz submissions; trainers and admins see all
+        if (req.user && req.user.role === 'student') {
+            combined = combined.filter(s => s.student_username === req.user.username);
         }
 
         const rightCount = combined.filter(s => s.is_correct).length;
@@ -625,10 +672,10 @@ const getQuizRecords = async (req, res) => {
     } catch (e) {
         console.error("Get Quiz Records error:", e);
         return res.status(200).json({
-            total: inMemorySubmissions.length,
-            rightCount: inMemorySubmissions.filter(s => s.is_correct).length,
-            wrongCount: inMemorySubmissions.filter(s => !s.is_correct).length,
-            submissions: inMemorySubmissions
+            total: 0,
+            rightCount: 0,
+            wrongCount: 0,
+            submissions: []
         });
     }
 };
@@ -670,7 +717,7 @@ const updateUserRoleOrStatus = async (req, res) => {
         const { data: user, error } = await supabase.from('users')
             .update(updateData)
             .eq('id', userId)
-            .select()
+            .select('id, name, username, email, role, is_active, updated_at')
             .single();
             
         if (error || !user) {
@@ -680,7 +727,7 @@ const updateUserRoleOrStatus = async (req, res) => {
         return res.status(200).json({ message: "User updated successfully", user });
     } catch (e) {
         console.error("Update User error:", e);
-        return res.status(500).json({ message: `Failed to update user: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to update user." });
     }
 };
 
@@ -691,29 +738,30 @@ const deleteUser = async (req, res) => {
         const { data: user, error } = await supabase.from('users')
             .delete()
             .eq('id', userId)
-            .select();
+            .select('id, name, username, email');
 
         if (error) {
             console.error("Delete User error:", error);
-            return res.status(500).json({ message: `Failed to delete user: ${error.message}` });
+            return res.status(500).json({ message: "Failed to delete user." });
         }
 
         return res.status(200).json({ message: "User deleted successfully", user });
     } catch (e) {
         console.error("Delete User exception:", e);
-        return res.status(500).json({ message: `Failed to delete user: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to delete user." });
     }
 };
 
 const getMediaPermissions = async (req, res) => {
     const { sessionId } = req.params;
     try {
-        const { data: permissions, error } = await supabase.from('media_permissions').select('*').eq('session_id', sessionId);
+        const cleanSessionId = sanitizeFilterValue(sessionId);
+        const { data: permissions, error } = await supabase.from('media_permissions').select('*').eq('session_id', cleanSessionId);
         if (error) throw error;
-        return res.status(200).json(permissions);
+        return res.status(200).json(permissions || []);
     } catch (e) {
         console.error("Get Media Permissions error:", e);
-        return res.status(500).json({ message: `Failed to fetch permissions: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to fetch permissions." });
     }
 };
 
@@ -726,11 +774,12 @@ const updateMediaPermission = async (req, res) => {
     }
 
     try {
+        const cleanSessionId = sanitizeFilterValue(sessionId);
         // Upsert behavior
         const { data: perm, error } = await supabase.from('media_permissions').upsert({
-            session_id: sessionId,
+            session_id: cleanSessionId,
             user_id: userId,
-            username: username,
+            username: username ? sanitizeFilterValue(username) : username,
             can_publish_audio: !!canPublishAudio,
             can_publish_video: !!canPublishVideo,
             can_screen_share: !!canScreenShare,
@@ -742,7 +791,7 @@ const updateMediaPermission = async (req, res) => {
         return res.status(200).json({ message: "Media permission updated", permission: perm });
     } catch (e) {
         console.error("Update Media Permission error:", e);
-        return res.status(500).json({ message: `Failed to update permission: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to update permission." });
     }
 };
 
@@ -758,10 +807,11 @@ const generateRtcTokenController = async (req, res) => {
         let userObj = null;
 
         if (userToken) {
-            const { data } = await supabase.from('users').select('*').eq('token', userToken).maybeSingle();
+            const { data } = await supabase.from('users').select('id, username, role').eq('token', userToken).maybeSingle();
             userObj = data;
         } else if (username) {
-            const { data } = await supabase.from('users').select('*').eq('username', username).maybeSingle();
+            const cleanUser = sanitizeFilterValue(username);
+            const { data } = await supabase.from('users').select('id, username, role').eq('username', cleanUser).maybeSingle();
             userObj = data;
         }
 
@@ -776,7 +826,7 @@ const generateRtcTokenController = async (req, res) => {
             rtcRole = RtcRole.PUBLISHER; // Trainers and Admins are granted publisher authority
         } else if (userObj && channelName) {
             // Check if student has explicit media permission override from Admin
-            const { data: perm } = await supabase.from('media_permissions').select('*').eq('session_id', channelName).eq('user_id', userObj.id).maybeSingle();
+            const { data: perm } = await supabase.from('media_permissions').select('can_publish_audio, can_publish_video, can_screen_share').eq('session_id', channelName).eq('user_id', userObj.id).maybeSingle();
             if (perm && (perm.can_publish_audio || perm.can_publish_video || perm.can_screen_share)) {
                 rtcRole = RtcRole.PUBLISHER;
             }
@@ -794,7 +844,7 @@ const generateRtcTokenController = async (req, res) => {
         });
     } catch (e) {
         console.error("Generate RTC Token Error:", e);
-        return res.status(500).json({ message: `Failed to generate RTC token: ${e.message || e}` });
+        return res.status(500).json({ message: "Failed to generate RTC token." });
     }
 };
 

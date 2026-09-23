@@ -38,7 +38,16 @@ API.interceptors.response.use(
     const message = data?.message || 'Something went wrong';
 
     switch (status) {
-      case 401:
+      case 401: {
+        const path = window.location.pathname;
+        const isTestSession = path.includes('/test') || path.includes('/coding') || path.includes('/student/');
+        
+        // If user is already in a test session, never wipe tokens or interrupt the exam with a redirect
+        if (isTestSession) {
+          console.warn('[Session Shield] 401 response during active test session. Preserving session tokens to avoid exam disruption.');
+          break;
+        }
+
         localStorage.removeItem('token');
         localStorage.removeItem('dms_token');
         toast.error('Session expired. Please log in again.', { id: 'session-expired' });
@@ -46,6 +55,7 @@ API.interceptors.response.use(
           window.location.href = '/auth';
         }
         break;
+      }
 
       case 403:
         toast.error('Access denied. You do not have permission.', { id: 'access-denied' });

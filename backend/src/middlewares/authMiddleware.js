@@ -47,6 +47,11 @@ export const authMiddleware = async (req, res, next) => {
             });
         }
 
+        // Ensure a valid email format is attached for downstream services (MCQ engine / gateway)
+        if (!user.email || !user.email.includes('@')) {
+            user.email = `${(user.username || 'user').replace(/[^a-zA-Z0-9_]/g, '') || 'user'}@synclearn.edu`;
+        }
+
         // Attach user to request object
         req.user = user;
         next();

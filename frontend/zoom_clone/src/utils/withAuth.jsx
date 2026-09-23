@@ -16,7 +16,7 @@ const withAuth = (WrappedComponent) => {
             const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
             const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
 
-            if ((token && storedUser) || isAdmin) {
+            if (token || isAdmin) {
                 setIsReady(true);
             } else {
                 navigate(`/auth?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true });

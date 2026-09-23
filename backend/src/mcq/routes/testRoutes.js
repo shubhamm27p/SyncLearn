@@ -20,7 +20,7 @@ router.put('/:id/publish', authorize('admin', 'trainer'), testController.publish
 router.post('/:id/send', authorize('admin', 'trainer'), testController.sendTestToStudents);
 
 // Questions
-router.get('/:id/questions', testController.getQuestions);
+router.get('/:id/questions', authorize('admin', 'trainer'), testController.getQuestions);
 router.post('/:id/questions', authorize('admin', 'trainer'), testController.addQuestionsManually);
 router.post(
   '/:id/questions/csv',

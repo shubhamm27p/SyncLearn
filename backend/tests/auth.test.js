@@ -5,7 +5,12 @@ import { jest } from '@jest/globals';
 jest.unstable_mockModule('../src/utils/supabase.js', () => {
     const queryBuilder = {
         select: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockReturnThis(),
+        update: jest.fn().mockReturnThis(),
+        delete: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
+        or: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
         single: jest.fn(),
         maybeSingle: jest.fn(),
     };
@@ -95,6 +100,30 @@ describe('API Security & Auth Tests', () => {
             
             expect(res.statusCode).toBe(200);
             expect(res.body.username).toBe('testuser');
+        });
+    });
+
+    describe('Role Authorization & IDOR Protection', () => {
+        it('should forbid student role from accessing admin users endpoint', async () => {
+            mockQueryBuilder.maybeSingle.mockResolvedValueOnce({
+                data: { id: '1', username: 'student_user', role: 'student', is_active: true },
+                error: null
+            });
+
+            const res = await request(app)
+                .get('/api/v1/users/admin/users')
+                .set('Authorization', 'Bearer valid-student-token');
+
+            expect(res.statusCode).toBe(403);
+            expect(res.body.message).toBe('Forbidden: Administrator access required');
+        });
+
+        it('should reject unauthenticated request to clear user history', async () => {
+            const res = await request(app)
+                .delete('/api/v1/users/clear_user_history');
+
+            expect(res.statusCode).toBe(401);
+            expect(res.body.message).toBe('Unauthorized: No token provided');
         });
     });
 

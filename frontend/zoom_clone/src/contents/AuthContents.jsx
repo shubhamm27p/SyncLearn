@@ -288,7 +288,7 @@ export const AuthProvider = ({children}) => {
         const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
         const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
 
-        if ((token && storedUser) || isAdmin) {
+        if (token || isAdmin) {
             setIsAuthReady(true);
             return;
         }

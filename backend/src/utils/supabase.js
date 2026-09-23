@@ -1,9 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project-ref.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = serviceRoleKey || anonKey || 'your-service-or-anon-key';
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+if (!serviceRoleKey) {
+    console.warn(
+        '[SECURITY WARNING] SUPABASE_SERVICE_ROLE_KEY is not defined in backend environment. ' +
+        'Backend is falling back to anon key. To work properly with Row Level Security (RLS) enabled, ' +
+        'please provide SUPABASE_SERVICE_ROLE_KEY in backend/.env.'
+    );
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
 
 export const fetchSingleRecord = async (queryBuilder) => {
     if (!queryBuilder || typeof queryBuilder !== 'object') {

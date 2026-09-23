@@ -39,7 +39,8 @@ const app = express();
 const server = createServer(app);
 
 const ensureAdminAccount = async () => {
-    const adminUsername = process.env.ADMIN_USERNAME || 'synclearn_admin';
+    const rawAdminUsername = process.env.ADMIN_USERNAME || 'synclearn_admin';
+    const adminUsername = rawAdminUsername.replace(/[,.:()"\\]/g, '').trim();
     const adminPassword = process.env.ADMIN_PASSWORD || 'SyncAdmin@2026!';
 
     try {
@@ -131,15 +132,19 @@ app.use(express.urlencoded({limit: "40kb", extended: true}));
 // Routes
 app.use("/api/v1/users", userRouter);
 
-app.get('/api/debug-mongo', (req, res) => {
-    const mongoose = require('mongoose');
-    res.json({
-        readyState: mongoose.connection.readyState,
-        states: mongoose.STATES,
-        envSet: !!process.env.MONGO_URI,
-        uri: process.env.MONGO_URI?.substring(0, 30) + '...'
+if (process.env.NODE_ENV === 'development') {
+    app.get('/api/debug-mongo', (req, res) => {
+        try {
+            const mongoose = require('mongoose');
+            res.json({
+                connected: mongoose.connection.readyState === 1,
+                envSet: !!process.env.MONGO_URI
+            });
+        } catch (e) {
+            res.status(500).json({ connected: false });
+        }
     });
-});
+}
 
 // Global Error Handler Middleware
 app.use(errorHandler);
