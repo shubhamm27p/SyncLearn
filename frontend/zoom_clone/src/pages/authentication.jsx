@@ -30,34 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn, useSignUp, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
-
-const GitHubIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }} fill="currentColor">
-    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-  </svg>
-);
-
-const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
-    <path
-      fill="#4285F4"
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-    />
-  </svg>
-);
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const labelSx = {
   display: 'block',
@@ -103,8 +76,6 @@ const inputSx = {
 export default function Authentication() {
   const routeTo = useNavigate();
   const location = useLocation();
-  const { signIn, isLoaded: isSignInLoaded } = useSignIn();
-  const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -122,50 +93,7 @@ export default function Authentication() {
 
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   
-  const handleClerkOAuth = async (strategy) => {
-    if (!isSignInLoaded) return;
-    try {
-      if (localStorage.getItem('token')) {
-        goAfterAuthentication();
-        return;
-      }
-      const origin = window.location.origin;
-      await signIn.authenticateWithRedirect({
-        strategy,
-        redirectUrl: `${origin}/auth/sso-callback`,
-        redirectUrlComplete: `${origin}/home`
-      });
-    } catch (err) {
-      console.error('Clerk OAuth error:', err);
-      if (err.errors && err.errors[0]?.code === 'identifier_already_signed_in') {
-         if (localStorage.getItem('token')) {
-           routeTo('/home', { replace: true });
-         } else {
-           toast.error('Your session is active but the app session is still being created. Please wait a moment.');
-         }
-         return;
-      }
-      // If sign in failed, attempt sign up with redirect (handles new OAuth users)
-      if (signUp && isSignUpLoaded) {
-        try {
-          const origin = window.location.origin;
-          await signUp.authenticateWithRedirect({
-            strategy,
-            redirectUrl: `${origin}/auth/sso-callback`,
-            redirectUrlComplete: `${origin}/home`
-          });
-          return;
-        } catch (signUpErr) {
-          console.error('Clerk OAuth SignUp error:', signUpErr);
-          const detail = signUpErr.errors?.[0]?.longMessage || signUpErr.errors?.[0]?.message || signUpErr.message || err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message;
-          toast.error(detail || 'OAuth Sign-In failed');
-          return;
-        }
-      }
-      const detail = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message;
-      toast.error(detail || 'OAuth Sign-In failed');
-    }
-  };
+
 
 
   // 0: Log In, 1: Register/Sign Up, 2: Forgot Password, 3: Reset Password
@@ -211,7 +139,7 @@ export default function Authentication() {
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa' }}>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress />
-          <Typography sx={{ mt: 2, color: '#667085' }}>Completing Google sign-in…</Typography>
+          <Typography sx={{ mt: 2, color: '#667085' }}>Completing sign-in…</Typography>
         </Box>
         <AuthenticateWithRedirectCallback
           signInFallbackRedirectUrl="/home"
@@ -674,64 +602,7 @@ export default function Authentication() {
               </Button>
             )}
 
-            {(formState === 0 || formState === 1) && (
-              <>
-                <Divider sx={{ my: 2.5, fontSize: '12px', color: '#9ca3af', '&::before, &::after': { borderColor: '#e5e7eb' } }}>
-                  OR
-                </Divider>
 
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => {
-                    setError('');
-                    handleClerkOAuth('oauth_google');
-                  }}
-                  sx={{
-                    py: 1.3,
-                    backgroundColor: '#ffffff',
-                    borderColor: '#d1d5db',
-                    color: '#374151',
-                    fontWeight: 600,
-                    fontSize: '14px',
-                    textTransform: 'none',
-                    borderRadius: '8px',
-                    '&:hover': {
-                      backgroundColor: '#f9fafb',
-                      borderColor: '#9ca3af'
-                    }
-                  }}
-                >
-                  <GoogleIcon /> {formState === 1 ? 'Sign up with Google' : 'Sign in with Google'}
-                </Button>
-                
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={() => {
-                    setError('');
-                    handleClerkOAuth('oauth_github');
-                  }}
-                  sx={{
-                    mt: 1.5,
-                    py: 1.3,
-                    backgroundColor: '#ffffff',
-                    borderColor: '#d1d5db',
-                    color: '#374151',
-                    fontWeight: 600,
-                    fontSize: '14px',
-                    textTransform: 'none',
-                    borderRadius: '8px',
-                    '&:hover': {
-                      backgroundColor: '#f9fafb',
-                      borderColor: '#9ca3af'
-                    }
-                  }}
-                >
-                  <GitHubIcon /> {formState === 1 ? 'Sign up with GitHub' : 'Sign in with GitHub'}
-                </Button>
-              </>
-            )}
           </Box>
         </Paper>
 

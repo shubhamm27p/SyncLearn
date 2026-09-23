@@ -127,7 +127,49 @@ describe('API Security & Auth Tests', () => {
         });
     });
 
-    describe('Google Login', () => {
+    describe('Clerk Login', () => {
+        it('should create a session for Clerk users', async () => {
+            mockQueryBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
+            mockQueryBuilder.single
+                .mockResolvedValueOnce({
+                    data: {
+                        id: 'user-2',
+                        name: 'Clerk User',
+                        username: 'clerk.user@example.com',
+                        email: 'clerk.user@example.com',
+                        role: 'student',
+                        is_active: true
+                    },
+                    error: null
+                })
+                .mockResolvedValueOnce({
+                    data: {
+                        id: 'user-2',
+                        name: 'Clerk User',
+                        username: 'clerk.user@example.com',
+                        email: 'clerk.user@example.com',
+                        role: 'student',
+                        is_active: true
+                    },
+                    error: null
+                });
+
+            const res = await request(app)
+                .post('/api/v1/users/clerk-login')
+                .send({
+                    email: 'clerk.user@example.com',
+                    name: 'Clerk User',
+                    clerkId: 'user_clerk_456'
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.token).toBeTruthy();
+            expect(res.body.user.email).toBe('clerk.user@example.com');
+            expect(mockQueryBuilder.eq).toHaveBeenCalledWith('email', 'clerk.user@example.com');
+        });
+    });
+
+    describe('Google Login (Legacy Alias)', () => {
         it('should create a session for emails that contain dots', async () => {
             mockQueryBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
             mockQueryBuilder.single

@@ -140,19 +140,22 @@ export const AuthProvider = ({children}) => {
         }
     };
 
-    const handleGoogleLogin = useCallback(async (email, name, googleId, role = "student") => {
-        const request = await client.post("/google-login", {
+    const handleClerkLogin = useCallback(async (email, name, clerkId, role = "student") => {
+        const request = await client.post("/clerk-login", {
             email,
             name,
-            googleId,
+            clerkId,
+            googleId: clerkId,
             role
         });
         if (request.status === 200 && request.data?.token) {
             persistSession(request.data.token, request.data.user);
-            return request.data.message || "Logged in with Google successfully!";
+            return request.data.message || "Logged in successfully!";
         }
-        throw new Error(request.data?.message || "Google Sign-In failed");
+        throw new Error(request.data?.message || "Authentication failed");
     }, []);
+
+    const handleGoogleLogin = handleClerkLogin;
 
     const handleLogout = useCallback(async () => {
         clerkSyncRef.current = false;
@@ -333,7 +336,7 @@ export const AuthProvider = ({children}) => {
                 clerkUser.primaryEmailAddress?.emailAddress ||
                 clerkUser.emailAddresses?.[0]?.emailAddress;
             const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || email?.split("@")[0] || "User";
-            const googleId = clerkUser.id;
+            const clerkId = clerkUser.id;
 
             try {
                 if (!email) {
@@ -343,7 +346,7 @@ export const AuthProvider = ({children}) => {
                 let lastError = null;
                 for (let attempt = 0; attempt < 3; attempt += 1) {
                     try {
-                        await handleGoogleLogin(email, name, googleId, "student");
+                        await handleClerkLogin(email, name, clerkId, "student");
                         lastError = null;
                         break;
                     } catch (error) {
@@ -361,7 +364,7 @@ export const AuthProvider = ({children}) => {
         };
 
         syncClerkWithBackend();
-    }, [isAuthLoaded, isSignedIn, isUserLoaded, clerkUser, handleGoogleLogin]);
+    }, [isAuthLoaded, isSignedIn, isUserLoaded, clerkUser, handleClerkLogin]);
 
     const data = {
         userData, 
@@ -377,6 +380,7 @@ export const AuthProvider = ({children}) => {
         getActiveRoomsApi,
         handleRegister,
         handleLogin,
+        handleClerkLogin,
         handleGoogleLogin,
         handleLogout,
         handleForgotPassword,

@@ -356,11 +356,12 @@ const deleteMeetingFromHistory = async (req, res) => {
     }
 };
 
-const googleLogin = async (req, res) => {
-    const { email, name, googleId } = req.body || {};
+const clerkLogin = async (req, res) => {
+    const { email, name, clerkId, googleId } = req.body || {};
+    const externalId = clerkId || googleId;
 
     if (!email) {
-        return res.status(400).json({ message: "Email is required for Google Sign-In" });
+        return res.status(400).json({ message: "Email is required for authentication" });
     }
 
     try {
@@ -372,14 +373,14 @@ const googleLogin = async (req, res) => {
         let { data: user, error: lookupError } = await findUserByUsernameOrEmail(cleanEmail, USER_PUBLIC_COLUMNS);
         if (lookupError) throw lookupError;
 
-        if (!user && googleId) {
-            const byGoogleId = await supabase
+        if (!user && externalId) {
+            const byExternalId = await supabase
                 .from('users')
                 .select(USER_PUBLIC_COLUMNS)
-                .eq('google_id', googleId)
+                .eq('google_id', externalId)
                 .maybeSingle();
-            if (byGoogleId.error) throw byGoogleId.error;
-            user = byGoogleId.data;
+            if (byExternalId.error) throw byExternalId.error;
+            user = byExternalId.data;
         }
 
         const sessionToken = crypto.randomBytes(20).toString("hex");
@@ -391,7 +392,7 @@ const googleLogin = async (req, res) => {
                 email: cleanEmail,
                 username: cleanEmail,
                 role: 'student',
-                google_id: googleId || null,
+                google_id: externalId || null,
                 password: hashedPassword,
                 token: sessionToken
             }]).select(USER_PUBLIC_COLUMNS).single();
@@ -417,7 +418,7 @@ const googleLogin = async (req, res) => {
         const updateData = { token: sessionToken };
         if (name && !user.name) updateData.name = name.trim();
         if (!user.email) updateData.email = cleanEmail;
-        if (googleId) updateData.google_id = googleId;
+        if (externalId) updateData.google_id = externalId;
 
         const { data: updatedUser, error } = await supabase
             .from('users')
@@ -430,14 +431,16 @@ const googleLogin = async (req, res) => {
 
         return res.status(200).json({
             token: sessionToken,
-            message: "Logged in with Google successfully",
+            message: "Logged in successfully",
             user: toClientUser(user)
         });
     } catch (e) {
-        console.error("Google Login error:", e);
-        return res.status(500).json({ message: "Google Sign-In failed. Please try again." });
+        console.error("Clerk Login error:", e);
+        return res.status(500).json({ message: "Authentication failed. Please try again." });
     }
 };
+
+const googleLogin = clerkLogin;
 
 const forgotPassword = async (req, res) => {
     const { username } = req.body || {};
@@ -939,6 +942,7 @@ export {
     addToHistory, 
     clearUserHistory,
     deleteMeetingFromHistory,
+    clerkLogin,
     googleLogin, 
     forgotPassword, 
     resetPassword, 

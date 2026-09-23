@@ -6,6 +6,7 @@ import {
     deleteMeetingFromHistory,
     login, 
     register, 
+    clerkLogin,
     googleLogin, 
     forgotPassword, 
     resetPassword, 
@@ -31,7 +32,8 @@ const router = Router();
 // Public Routes (Protected by API Trigger Limiter to prevent brute force)
 router.route("/login").post(authLimiter, login);
 router.route("/register").post(authLimiter, register);
-router.route("/google-login").post(authLimiter, googleLogin);
+router.route("/clerk-login").post(authLimiter, clerkLogin);
+router.route("/google-login").post(authLimiter, clerkLogin);
 router.route("/forgot-password").post(authLimiter, forgotPassword);
 router.route("/send-password-to-mail").post(authLimiter, sendPasswordToMail);
 router.route("/reset-password").post(authLimiter, resetPassword);
