@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseKey = serviceRoleKey || anonKey || 'your-service-or-anon-key';
+
+if (!supabaseUrl) {
+    console.warn(
+        '[supabase] SUPABASE_URL is not defined. Set it in backend/.env or database calls will fail.'
+    );
+}
 
 if (!serviceRoleKey) {
     console.warn(
@@ -12,7 +19,7 @@ if (!serviceRoleKey) {
     );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey, {
     auth: {
         autoRefreshToken: false,
         persistSession: false

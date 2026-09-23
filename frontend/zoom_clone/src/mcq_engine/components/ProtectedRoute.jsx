@@ -4,9 +4,14 @@ import { AuthContext } from '../../contents/AuthContents';
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { userRole, currentUser, isAuthReady } = useContext(AuthContext);
-  
+
   if (!isAuthReady) {
-    return null; // Wait for global auth synchronization before kicking out
+    return (
+      <div className="app-loading-wrapper">
+        <div className="app-loading-spinner"></div>
+        <div className="app-loading-text">Signing you in…</div>
+      </div>
+    );
   }
 
   const token = localStorage.getItem('token');

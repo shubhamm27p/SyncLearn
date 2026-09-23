@@ -24,7 +24,12 @@ const withAuth = (WrappedComponent) => {
         }, [isAuthReady, location, navigate]);
 
         if (!isReady) {
-            return null;
+            return (
+                <div className="app-loading-wrapper">
+                    <div className="app-loading-spinner"></div>
+                    <div className="app-loading-text">Signing you in…</div>
+                </div>
+            );
         }
 
         return <WrappedComponent {...props} />;

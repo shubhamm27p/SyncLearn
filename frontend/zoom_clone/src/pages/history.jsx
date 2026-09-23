@@ -13,8 +13,9 @@ import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import toast from 'react-hot-toast';
+import withAuth from '../utils/withAuth';
 
-export default function History() {
+function History() {
     const { getHistoryOfUser, getActiveRoomsApi, clearUserHistoryApi, deleteMeetingHistoryApi } = useContext(AuthContext);
     const [meetings, setMeetings] = useState([]);
     const [activeRooms, setActiveRooms] = useState([]);
@@ -352,3 +353,5 @@ export default function History() {
         </Box>
     );
 }
+
+export default withAuth(History);

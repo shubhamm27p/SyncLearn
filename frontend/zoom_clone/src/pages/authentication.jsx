@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import {
   Button,
   CssBaseline,
@@ -30,7 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn, AuthenticateWithRedirectCallback, useAuth, useClerk } from '@clerk/clerk-react';
+import { useSignIn, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const GitHubIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" style={{ marginRight: '10px' }} fill="currentColor">
@@ -104,8 +104,6 @@ export default function Authentication() {
   const routeTo = useNavigate();
   const location = useLocation();
   const { signIn, isLoaded } = useSignIn();
-  const { isSignedIn } = useAuth();
-  const { signOut } = useClerk();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -125,17 +123,24 @@ export default function Authentication() {
   const handleClerkOAuth = async (strategy) => {
     if (!isLoaded) return;
     try {
-      await signOut(); // Clear any stale session first
+      if (localStorage.getItem('token')) {
+        goAfterAuthentication();
+        return;
+      }
+      const origin = window.location.origin;
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: '/auth/sso-callback',
-        redirectUrlComplete: '/home'
+        redirectUrl: `${origin}/auth/sso-callback`,
+        redirectUrlComplete: `${origin}/home`
       });
     } catch (err) {
       console.error(err);
-      // Fallback if there's still an active session conflict
       if (err.errors && err.errors[0]?.code === 'identifier_already_signed_in') {
-         routeTo('/auth/sso-callback');
+         if (localStorage.getItem('token')) {
+           routeTo('/home', { replace: true });
+         } else {
+           toast.error('Your Google session is active but the app session is still being created. Please wait a moment.');
+         }
          return;
       }
       toast.error('OAuth Sign-In failed');
@@ -165,13 +170,49 @@ export default function Authentication() {
   const {
     handleRegister,
     handleLogin,
-    handleGoogleLogin,
     handleForgotPassword,
-    handleResetPassword
+    handleResetPassword,
+    isAuthReady
   } = useContext(AuthContext);
 
-  if (location.pathname.includes('/sso-callback')) {
-    return <AuthenticateWithRedirectCallback signInFallbackRedirectUrl="/home" signUpFallbackRedirectUrl="/home" />;
+  const isSsoCallback = location.pathname.includes('/sso-callback');
+
+  useEffect(() => {
+    if (isSsoCallback) return;
+    if (!isAuthReady) return;
+    const token = localStorage.getItem('token');
+    if (token) {
+      goAfterAuthentication();
+    }
+  }, [isAuthReady, isSsoCallback, location.search, location.state]);
+
+  if (isSsoCallback) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2, color: '#667085' }}>Completing Google sign-in…</Typography>
+        </Box>
+        <AuthenticateWithRedirectCallback
+          signInFallbackRedirectUrl="/home"
+          signUpFallbackRedirectUrl="/home"
+          signInForceRedirectUrl="/home"
+          signUpForceRedirectUrl="/home"
+        />
+      </Box>
+    );
+  }
+
+  const hasAppToken = Boolean(localStorage.getItem('token'));
+  if (!isAuthReady) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress />
+          <Typography sx={{ mt: 2, color: '#667085' }}>Signing you in…</Typography>
+        </Box>
+      </Box>
+    );
   }
 
   const handleAuth = async () => {

@@ -78,7 +78,7 @@ const inputSx = {
 
 export default function ProfileSettings() {
   const navigate = useNavigate();
-  const { currentUser, userRole, setCurrentUser } = useContext(AuthContext);
+  const { currentUser, userRole, setCurrentUser, handleLogout } = useContext(AuthContext);
 
   const [activeTab, setActiveTab] = useState(0); // 0: Profile, 1: Security, 2: Preferences
   
@@ -340,9 +340,13 @@ export default function ProfileSettings() {
               color="error"
               startIcon={<LogoutIcon />}
               onClick={() => {
-                localStorage.removeItem("token");
-                sessionStorage.removeItem("admin_authenticated");
-                navigate("/auth");
+                if (handleLogout) {
+                  handleLogout();
+                } else {
+                  localStorage.removeItem("token");
+                  sessionStorage.removeItem("admin_authenticated");
+                  navigate("/auth");
+                }
               }}
               sx={{ color: "#ef4444", borderColor: "#fca5a5", textTransform: "none", fontWeight: 600, borderRadius: "8px" }}
             >

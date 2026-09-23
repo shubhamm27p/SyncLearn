@@ -33,7 +33,7 @@ function HomeComponent() {
     const [settingsAnchorEl, setSettingsAnchorEl] = useState(null);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
     
-    const { addToUserHistory } = useContext(AuthContext);
+    const { addToUserHistory, handleLogout } = useContext(AuthContext);
 
     const getActiveUser = () => {
         try {
@@ -175,9 +175,13 @@ function HomeComponent() {
                             <MenuItem 
                                 onClick={() => {
                                     setSettingsAnchorEl(null);
-                                    localStorage.removeItem("token");
-                                    sessionStorage.removeItem("admin_authenticated");
-                                    navigate('/auth');
+                                    if (handleLogout) {
+                                        handleLogout();
+                                    } else {
+                                        localStorage.removeItem("token");
+                                        sessionStorage.removeItem("admin_authenticated");
+                                        navigate('/auth');
+                                    }
                                 }}
                                 sx={{ py: 1.2, px: 2, borderRadius: "8px", gap: 1.5, color: "#ef4444" }}
                             >

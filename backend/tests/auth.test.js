@@ -127,4 +127,46 @@ describe('API Security & Auth Tests', () => {
         });
     });
 
+    describe('Google Login', () => {
+        it('should create a session for emails that contain dots', async () => {
+            mockQueryBuilder.maybeSingle.mockResolvedValue({ data: null, error: null });
+            mockQueryBuilder.single
+                .mockResolvedValueOnce({
+                    data: {
+                        id: 'user-1',
+                        name: 'Jane Doe',
+                        username: 'jane.doe@gmail.com',
+                        email: 'jane.doe@gmail.com',
+                        role: 'student',
+                        is_active: true
+                    },
+                    error: null
+                })
+                .mockResolvedValueOnce({
+                    data: {
+                        id: 'user-1',
+                        name: 'Jane Doe',
+                        username: 'jane.doe@gmail.com',
+                        email: 'jane.doe@gmail.com',
+                        role: 'student',
+                        is_active: true
+                    },
+                    error: null
+                });
+
+            const res = await request(app)
+                .post('/api/v1/users/google-login')
+                .send({
+                    email: 'jane.doe@gmail.com',
+                    name: 'Jane Doe',
+                    googleId: 'user_clerk_123'
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.token).toBeTruthy();
+            expect(res.body.user.email).toBe('jane.doe@gmail.com');
+            expect(mockQueryBuilder.eq).toHaveBeenCalledWith('email', 'jane.doe@gmail.com');
+        });
+    });
+
 });
