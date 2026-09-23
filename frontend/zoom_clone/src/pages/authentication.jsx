@@ -387,6 +387,7 @@ export default function Authentication() {
           </Typography>
 
           {/* Form Fields Section */}
+          <Box component="form" noValidate sx={{ width: '100%' }}>
             <Box sx={{ mb: 2 }}>
               <Typography component="label" sx={labelSx}>
                 {formState === 2 ? "Username or Email" : "Username / Email"}
