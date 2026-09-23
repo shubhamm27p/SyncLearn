@@ -37,7 +37,4 @@ const answerKeySchema = new mongoose.Schema(
   }
 );
 
-// Index for fast lookup by test
-answerKeySchema.index({ testId: 1 });
-
 module.exports = mongoose.model('AnswerKey', answerKeySchema);
