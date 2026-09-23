@@ -30,7 +30,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
 import ContactSupportModal from '../components/ContactSupportModal.jsx';
-import { useSignIn, useSignUp, useUser, useAuth, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { useSignIn, useSignUp, useUser, useAuth, useClerk, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" style={{ marginRight: '10px' }}>
@@ -107,6 +107,7 @@ export default function Authentication() {
   const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
+  const clerk = useClerk();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -175,58 +176,68 @@ export default function Authentication() {
       return;
     }
 
-    if (isSignedIn && clerkUser) {
-      setIsLoading(true);
+    setIsLoading(true);
+    setError('');
+
+    // If Clerk already has an active signed-in user, sync session immediately
+    const activeUser = clerkUser || clerk?.user;
+    const activeEmail = activeUser?.primaryEmailAddress?.emailAddress || activeUser?.emailAddresses?.[0]?.emailAddress;
+    if (isSignedIn && activeUser && activeEmail) {
       try {
-        const email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress;
-        const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || email?.split('@')[0] || "User";
-        await handleClerkLogin(email, name, clerkUser.id, "student");
+        const name = activeUser.fullName || activeUser.firstName || activeUser.username || activeEmail.split('@')[0] || "User";
+        await handleClerkLogin(activeEmail, name, activeUser.id, "student");
         goAfterAuthentication();
+        return;
       } catch (err) {
         console.error("Clerk session auto-sync error:", err);
-        toast.error("Session sync failed. Please try again.");
       } finally {
         setIsLoading(false);
       }
-      return;
     }
 
-    if (!isSignInLoaded) return;
-
-    setIsLoading(true);
-    setError('');
     try {
       const origin = window.location.origin;
-      await signIn.authenticateWithRedirect({
-        strategy,
-        redirectUrl: `${origin}/auth/sso-callback`,
-        redirectUrlComplete: `${origin}/home`
-      });
-    } catch (err) {
-      console.error('Clerk OAuth error:', err);
-      if (err.errors && err.errors[0]?.code === 'identifier_already_signed_in') {
-        if (clerkUser) {
-          const email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress;
-          const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || "User";
-          await handleClerkLogin(email, name, clerkUser.id, "student");
-        }
-        goAfterAuthentication();
+
+      // If user is partially logged into Clerk but not in backend, clear stale Clerk session first
+      if (isSignedIn && clerk?.signOut) {
+        try {
+          await clerk.signOut();
+        } catch (_) {}
+      }
+
+      if (signIn && isSignInLoaded) {
+        await signIn.authenticateWithRedirect({
+          strategy,
+          redirectUrl: `${origin}/auth/sso-callback`,
+          redirectUrlComplete: `${origin}/home`,
+          continueSignUp: true
+        });
         return;
       }
+
+      if (signUp && isSignUpLoaded) {
+        await signUp.authenticateWithRedirect({
+          strategy,
+          redirectUrl: `${origin}/auth/sso-callback`,
+          redirectUrlComplete: `${origin}/home`,
+          continueSignIn: true
+        });
+        return;
+      }
+    } catch (err) {
+      console.error('Clerk OAuth error:', err);
       if (signUp && isSignUpLoaded) {
         try {
           const origin = window.location.origin;
           await signUp.authenticateWithRedirect({
             strategy,
             redirectUrl: `${origin}/auth/sso-callback`,
-            redirectUrlComplete: `${origin}/home`
+            redirectUrlComplete: `${origin}/home`,
+            continueSignIn: true
           });
           return;
         } catch (signUpErr) {
           console.error('Clerk OAuth SignUp error:', signUpErr);
-          const detail = signUpErr.errors?.[0]?.longMessage || signUpErr.errors?.[0]?.message || signUpErr.message;
-          toast.error(detail || 'OAuth Sign-In failed');
-          return;
         }
       }
       const detail = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message;
@@ -248,6 +259,7 @@ export default function Authentication() {
           signUpFallbackRedirectUrl="/home"
           signInForceRedirectUrl="/home"
           signUpForceRedirectUrl="/home"
+          continueSignUp={true}
         />
       </Box>
     );
