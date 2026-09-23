@@ -307,11 +307,7 @@ export const AuthProvider = ({children}) => {
     };
 
     useEffect(() => {
-        const onSsoCallback = window.location.pathname.includes("/sso-callback");
-
         if (!isAuthLoaded) return;
-        // Clerk is still completing the OAuth handshake — do not mark the user logged out.
-        if (onSsoCallback) return;
 
         const token = localStorage.getItem("token") || sessionStorage.getItem("token");
         const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";

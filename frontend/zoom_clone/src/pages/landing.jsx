@@ -169,19 +169,7 @@ export default function LandingPage() {
                     >
                         Contact Support
                     </Typography>
-                    <Button
-                        onClick={() => router("/auth")}
-                        sx={{
-                            color: "#334155",
-                            fontWeight: 600,
-                            textTransform: "none",
-                            fontSize: "14px",
-                            px: 2,
-                            "&:hover": { color: "#2563eb", backgroundColor: "rgba(37, 99, 235, 0.04)" }
-                        }}
-                    >
-                        Register
-                    </Button>
+
                     <Button
                         onClick={() => router("/auth")}
                         variant="contained"
@@ -254,14 +242,7 @@ export default function LandingPage() {
                         </ListItemButton>
                     </ListItem>
                     <Divider sx={{ mb: 3 }} />
-                    <Button
-                        fullWidth
-                        variant="outlined"
-                        onClick={() => { setMobileOpen(false); router('/auth'); }}
-                        sx={{ mb: 1.5, py: 1.2, borderRadius: "10px", fontWeight: 600, textTransform: "none", borderColor: "#cbd5e1", color: "#334155" }}
-                    >
-                        Register
-                    </Button>
+
                     <Button
                         fullWidth
                         variant="contained"
