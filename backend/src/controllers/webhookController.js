@@ -37,25 +37,50 @@ export const clerkWebhookHandler = async (req, res) => {
   const { id } = evt.data;
   const eventType = evt.type;
 
-  if (eventType === 'user.created') {
+    if (eventType === 'user.created') {
     const { email_addresses, first_name, last_name } = evt.data;
     const primaryEmail = email_addresses?.length > 0 ? email_addresses[0].email_address : null;
     const name = `${first_name || ''} ${last_name || ''}`.trim() || 'New User';
 
     if (primaryEmail) {
       try {
-        const { error } = await supabase.from('users').upsert({
-          id: id,
-          email: primaryEmail,
-          username: primaryEmail,
-          name: name,
-          role: 'student', // Default role for new signups
-          is_active: true
-        });
+        // Clerk user ids are not UUIDs — never write them into users.id.
+        const { data: existing, error: lookupError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', primaryEmail.toLowerCase())
+          .maybeSingle();
 
-        if (error) {
-          console.error('Error inserting user to Supabase:', error);
+        if (lookupError) {
+          console.error('Error looking up Clerk user in Supabase:', lookupError);
           return res.status(500).json({ success: false, message: 'Database error' });
+        }
+
+        if (existing) {
+          const { error } = await supabase.from('users').update({
+            name,
+            google_id: id,
+            is_active: true
+          }).eq('id', existing.id);
+
+          if (error) {
+            console.error('Error updating Clerk user in Supabase:', error);
+            return res.status(500).json({ success: false, message: 'Database error' });
+          }
+        } else {
+          const { error } = await supabase.from('users').insert({
+            email: primaryEmail.toLowerCase(),
+            username: primaryEmail.toLowerCase(),
+            name,
+            google_id: id,
+            role: 'student',
+            is_active: true
+          });
+
+          if (error) {
+            console.error('Error inserting user to Supabase:', error);
+            return res.status(500).json({ success: false, message: 'Database error' });
+          }
         }
 
         console.log(`Successfully synced user ${primaryEmail} to Supabase`);

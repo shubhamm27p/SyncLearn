@@ -8,11 +8,43 @@ import { sendPasswordResetCodeEmail, sendSupportTicketEmail } from "../utils/sen
 let inMemorySiteStatus = true;
 let siteStatusCache = { value: null, expiresAt: 0 };
 
-// Sanitizes user inputs to prevent PostgREST .or() filter syntax injection
+// Sanitizes values used inside PostgREST `.or()` filters (meeting ids, usernames without emails).
+// Do NOT use this for emails — it strips `.` and would turn `jane.doe@gmail.com` into `janedoe@gmailcom`.
 const sanitizeFilterValue = (val) => {
     if (typeof val !== 'string') return '';
     return val.replace(/[,.:()"\\]/g, '').trim();
 };
+
+const USER_AUTH_COLUMNS = 'id, name, username, email, password, role, is_active';
+const USER_PUBLIC_COLUMNS = 'id, name, username, email, role, is_active';
+
+const uniqueIdentityValues = (identity) => {
+    const raw = typeof identity === 'string' ? identity.trim() : '';
+    if (!raw) return [];
+    const lower = raw.toLowerCase();
+    return raw === lower ? [raw] : [raw, lower];
+};
+
+const findUserByUsernameOrEmail = async (identity, columns = USER_AUTH_COLUMNS) => {
+    for (const value of uniqueIdentityValues(identity)) {
+        const byUsername = await supabase.from('users').select(columns).eq('username', value).maybeSingle();
+        if (byUsername.error) return byUsername;
+        if (byUsername.data) return byUsername;
+
+        const byEmail = await supabase.from('users').select(columns).eq('email', value).maybeSingle();
+        if (byEmail.error) return byEmail;
+        if (byEmail.data) return byEmail;
+    }
+
+    return { data: null, error: null };
+};
+
+const toClientUser = (user) => ({
+    name: user?.name,
+    username: user?.username,
+    email: user?.email || (user?.username?.includes('@') ? user.username : undefined),
+    role: user?.role || 'student'
+});
 
 export const getSiteOnlineStatus = async () => {
     if (siteStatusCache.expiresAt > Date.now()) {
@@ -98,7 +130,7 @@ const login = async (req, res) => {
     }
 
     try {
-        const cleanInput = sanitizeFilterValue(username);
+        const cleanInput = username.trim();
         if (!cleanInput) {
             return res.status(400).json({ message: "Invalid username or email format" });
         }
@@ -106,11 +138,7 @@ const login = async (req, res) => {
         const defaultAdminPass = process.env.ADMIN_PASSWORD || 'SyncAdmin@2026!';
 
         const [userResult, siteOnline] = await Promise.all([
-            supabase
-                .from('users')
-                .select('id, name, username, email, password, role, is_active')
-                .or(`username.eq.${cleanInput},email.eq.${cleanInput},username.ilike.${cleanInput},email.ilike.${cleanInput}`)
-                .maybeSingle(),
+            findUserByUsernameOrEmail(cleanInput, USER_AUTH_COLUMNS),
             getSiteOnlineStatus()
         ]);
 
@@ -178,12 +206,10 @@ const login = async (req, res) => {
             return res.status(200).json({ 
                 token: token, 
                 message: "Logged in successfully",
-                user: {
-                    name: user.name,
-                    username: user.username,
-                    email: user.email || (user.username && user.username.includes("@") ? user.username : `${user.username}@synclearn.edu`),
-                    role: user.role || 'student'
-                }
+                user: toClientUser({
+                    ...user,
+                    email: user.email || (user.username && user.username.includes("@") ? user.username : `${user.username}@synclearn.edu`)
+                })
             });
         } else {
             return res.status(400).json({ message: "Invalid Password" });
@@ -209,19 +235,17 @@ const register = async (req, res) => {
         if (await getSiteOnlineStatus() === false) {
             return res.status(503).json({ message: "The website is currently offline. Please try again later.", code: "SITE_OFFLINE" });
         }
-        const cleanUser = sanitizeFilterValue(username);
+        const cleanUser = username.trim();
         if (!cleanUser) {
             return res.status(400).json({ message: "Invalid username format" });
         }
-        const targetEmail = cleanUser.includes("@") ? cleanUser : `${cleanUser}@synclearn.edu`;
+        const targetEmail = cleanUser.includes("@") ? cleanUser.toLowerCase() : `${cleanUser}@synclearn.edu`;
 
-        // Ensure no two users have the same username OR email
-        const { data: existingUser } = await fetchSingleRecord(
-            supabase
-                .from('users')
-                .select('id')
-                .or(`username.eq.${cleanUser},email.eq.${cleanUser},username.eq.${targetEmail},email.eq.${targetEmail}`)
-        );
+        const { data: existingByUsername } = await findUserByUsernameOrEmail(cleanUser, 'id');
+        const { data: existingByEmail } = targetEmail === cleanUser
+            ? { data: existingByUsername }
+            : await findUserByUsernameOrEmail(targetEmail, 'id');
+        const existingUser = existingByUsername || existingByEmail;
 
         if (existingUser) {
             return res.status(400).json({ message: "A user with this username or email already exists!" });
@@ -338,49 +362,74 @@ const googleLogin = async (req, res) => {
     }
 
     try {
-        const cleanEmail = sanitizeFilterValue(email);
-        if (!cleanEmail) {
+        const cleanEmail = String(email).trim().toLowerCase();
+        if (!cleanEmail || !cleanEmail.includes('@')) {
             return res.status(400).json({ message: "Invalid email format" });
         }
 
-        let { data: user } = await supabase
-            .from('users')
-            .select('id, name, username, email, role, is_active')
-            .or(`email.eq.${cleanEmail},username.eq.${cleanEmail}`)
-            .maybeSingle();
-        
+        let { data: user, error: lookupError } = await findUserByUsernameOrEmail(cleanEmail, USER_PUBLIC_COLUMNS);
+        if (lookupError) throw lookupError;
+
+        if (!user && googleId) {
+            const byGoogleId = await supabase
+                .from('users')
+                .select(USER_PUBLIC_COLUMNS)
+                .eq('google_id', googleId)
+                .maybeSingle();
+            if (byGoogleId.error) throw byGoogleId.error;
+            user = byGoogleId.data;
+        }
+
         const sessionToken = crypto.randomBytes(20).toString("hex");
 
         if (!user) {
+            const hashedPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
             const { data: newUser, error } = await supabase.from('users').insert([{
                 name: name ? name.trim() : cleanEmail.split('@')[0],
                 email: cleanEmail,
                 username: cleanEmail,
                 role: 'student',
+                google_id: googleId || null,
+                password: hashedPassword,
                 token: sessionToken
-            }]).select('id, name, username, email, role, is_active').single();
-            if (error) throw error;
-            user = newUser;
-        } else {
-            if (user.is_active === false) {
-                return res.status(403).json({ message: "Your account has been disabled." });
+            }]).select(USER_PUBLIC_COLUMNS).single();
+
+            if (error) {
+                if (error.code === '23505') {
+                    const existing = await findUserByUsernameOrEmail(cleanEmail, USER_PUBLIC_COLUMNS);
+                    if (existing.error) throw existing.error;
+                    user = existing.data;
+                    if (!user) throw error;
+                } else {
+                    throw error;
+                }
+            } else {
+                user = newUser;
             }
-            const updateData = { token: sessionToken };
-            if (name && !user.name) updateData.name = name.trim();
-            if (!user.email) updateData.email = cleanEmail;
-            const { data: updatedUser, error } = await supabase.from('users').update(updateData).eq('id', user.id).select('id, name, username, email, role, is_active').single();
-            if (error) throw error;
-            user = updatedUser;
         }
 
-        return res.status(200).json({ 
-            token: sessionToken, 
+        if (user.is_active === false) {
+            return res.status(403).json({ message: "Your account has been disabled." });
+        }
+
+        const updateData = { token: sessionToken };
+        if (name && !user.name) updateData.name = name.trim();
+        if (!user.email) updateData.email = cleanEmail;
+        if (googleId) updateData.google_id = googleId;
+
+        const { data: updatedUser, error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', user.id)
+            .select(USER_PUBLIC_COLUMNS)
+            .single();
+        if (error) throw error;
+        user = updatedUser || user;
+
+        return res.status(200).json({
+            token: sessionToken,
             message: "Logged in with Google successfully",
-            user: {
-                name: user.name,
-                username: user.username,
-                role: user.role || 'student'
-            }
+            user: toClientUser(user)
         });
     } catch (e) {
         console.error("Google Login error:", e);
@@ -396,16 +445,12 @@ const forgotPassword = async (req, res) => {
     }
 
     try {
-        const cleanUser = sanitizeFilterValue(username);
+        const cleanUser = username.trim();
         if (!cleanUser) {
             return res.status(400).json({ message: "Invalid username or email format" });
         }
 
-        const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('id, username, email')
-            .or(`username.eq.${cleanUser},email.eq.${cleanUser}`)
-            .maybeSingle();
+        const { data: user, error: userError } = await findUserByUsernameOrEmail(cleanUser, 'id, username, email');
 
         if (userError || !user) {
             return res.status(404).json({ message: "No account found with that username or email." });
@@ -444,17 +489,21 @@ const resetPassword = async (req, res) => {
     }
 
     try {
-        const cleanUser = sanitizeFilterValue(username);
+        const cleanUser = username.trim();
         if (!cleanUser) {
             return res.status(400).json({ message: "Invalid username or email format" });
         }
 
-        const { data: user, error: userError } = await supabase.from('users')
-            .select('id')
-            .or(`username.eq.${cleanUser},email.eq.${cleanUser}`)
-            .eq('reset_password_token', resetToken)
-            .gte('reset_password_expires', new Date().toISOString())
-            .maybeSingle();
+        const { data: identityUser, error: userError } = await findUserByUsernameOrEmail(
+            cleanUser,
+            'id, reset_password_token, reset_password_expires'
+        );
+
+        const tokenValid = identityUser
+            && identityUser.reset_password_token === resetToken
+            && identityUser.reset_password_expires
+            && new Date(identityUser.reset_password_expires) >= new Date();
+        const user = tokenValid ? identityUser : null;
 
         if (userError || !user) {
             return res.status(400).json({ message: "Invalid or expired password reset code." });

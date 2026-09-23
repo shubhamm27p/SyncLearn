@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/clerk-react';
 export const AuthContext = createContext({});
 
 const serverUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
@@ -33,7 +33,9 @@ export const AuthProvider = ({children}) => {
 
     const { isLoaded: isAuthLoaded, isSignedIn } = useClerkAuth();
     const { isLoaded: isUserLoaded, user: clerkUser } = useUser();
+    const { signOut: clerkSignOut } = useClerk();
     const [isAuthReady, setIsAuthReady] = useState(false);
+    const clerkSyncRef = useRef(false);
 
     const getInitialUser = () => {
         try {
@@ -125,31 +127,51 @@ export const AuthProvider = ({children}) => {
         }
     }
 
-    const handleGoogleLogin = async (email, name, googleId, role = "student") => {
-        try {
-            let request = await client.post("/google-login", {
-                email,
-                name,
-                googleId,
-                role
-            });
-            if (request.status === 200) {
-                // Clear any stale admin authentication state for standard logins
-                sessionStorage.removeItem("admin_authenticated");
-                
-                localStorage.setItem("token", request.data.token);
-                if (request.data.user) {
-                    localStorage.setItem("userRole", request.data.user.role || "student");
-                    localStorage.setItem("currentUser", JSON.stringify(request.data.user));
-                    setUserRole(request.data.user.role || "student");
-                    setCurrentUser(request.data.user);
-                }
-                return request.data.message || "Logged in with Google successfully!";
-            }
-        } catch (err) {
-            throw err;
+    const persistSession = (token, user) => {
+        sessionStorage.removeItem("admin_authenticated");
+        if (token) {
+            localStorage.setItem("token", token);
+        }
+        if (user) {
+            localStorage.setItem("userRole", user.role || "student");
+            localStorage.setItem("currentUser", JSON.stringify(user));
+            setUserRole(user.role || "student");
+            setCurrentUser(user);
         }
     };
+
+    const handleGoogleLogin = useCallback(async (email, name, googleId, role = "student") => {
+        const request = await client.post("/google-login", {
+            email,
+            name,
+            googleId,
+            role
+        });
+        if (request.status === 200 && request.data?.token) {
+            persistSession(request.data.token, request.data.user);
+            return request.data.message || "Logged in with Google successfully!";
+        }
+        throw new Error(request.data?.message || "Google Sign-In failed");
+    }, []);
+
+    const handleLogout = useCallback(async () => {
+        clerkSyncRef.current = false;
+        localStorage.removeItem("token");
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
+        sessionStorage.removeItem("admin_authenticated");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        setCurrentUser(null);
+        setUserRole("student");
+        try {
+            await clerkSignOut();
+        } catch (err) {
+            console.warn("Clerk sign-out skipped:", err?.message || err);
+        }
+        router("/auth", { replace: true });
+    }, [clerkSignOut, router]);
 
     const getActiveRoomsApi = async () => {
         const request = await client.get("/active-rooms");
@@ -282,10 +304,13 @@ export const AuthProvider = ({children}) => {
     };
 
     useEffect(() => {
+        const onSsoCallback = window.location.pathname.includes("/sso-callback");
+
         if (!isAuthLoaded) return;
-        
+        // Clerk is still completing the OAuth handshake — do not mark the user logged out.
+        if (onSsoCallback) return;
+
         const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const storedUser = localStorage.getItem("currentUser") || localStorage.getItem("user") || sessionStorage.getItem("user");
         const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
 
         if (token || isAdmin) {
@@ -293,29 +318,50 @@ export const AuthProvider = ({children}) => {
             return;
         }
 
-        if (isSignedIn) {
-            if (!isUserLoaded) return; // Wait for clerkUser to load
-            
-            if (clerkUser) {
-                const syncClerkWithBackend = async () => {
-                    try {
-                        const email = clerkUser.primaryEmailAddress?.emailAddress;
-                        const name = clerkUser.fullName || clerkUser.username || "User";
-                        const googleId = clerkUser.id;
-                        
-                        await handleGoogleLogin(email, name, googleId, "student");
-                        setIsAuthReady(true);
-                    } catch (error) {
-                        console.error("Failed to sync Clerk session with backend", error);
-                        setIsAuthReady(true); 
-                    }
-                };
-                syncClerkWithBackend();
-            }
-        } else {
-            setIsAuthReady(true); // Not signed into Clerk, auth check is complete
+        if (!isSignedIn) {
+            clerkSyncRef.current = false;
+            setIsAuthReady(true);
+            return;
         }
-    }, [isAuthLoaded, isSignedIn, isUserLoaded, clerkUser]);
+
+        if (!isUserLoaded || !clerkUser) return;
+        if (clerkSyncRef.current) return;
+        clerkSyncRef.current = true;
+
+        const syncClerkWithBackend = async () => {
+            const email =
+                clerkUser.primaryEmailAddress?.emailAddress ||
+                clerkUser.emailAddresses?.[0]?.emailAddress;
+            const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || email?.split("@")[0] || "User";
+            const googleId = clerkUser.id;
+
+            try {
+                if (!email) {
+                    throw new Error("Clerk account has no email address");
+                }
+
+                let lastError = null;
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    try {
+                        await handleGoogleLogin(email, name, googleId, "student");
+                        lastError = null;
+                        break;
+                    } catch (error) {
+                        lastError = error;
+                        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+                    }
+                }
+                if (lastError) throw lastError;
+            } catch (error) {
+                console.error("Failed to sync Clerk session with backend", error);
+                clerkSyncRef.current = false;
+            } finally {
+                setIsAuthReady(true);
+            }
+        };
+
+        syncClerkWithBackend();
+    }, [isAuthLoaded, isSignedIn, isUserLoaded, clerkUser, handleGoogleLogin]);
 
     const data = {
         userData, 
@@ -332,6 +378,7 @@ export const AuthProvider = ({children}) => {
         handleRegister,
         handleLogin,
         handleGoogleLogin,
+        handleLogout,
         handleForgotPassword,
         handleResetPassword,
         createQuizApi,
