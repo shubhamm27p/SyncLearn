@@ -29,6 +29,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contents/AuthContents';
 import toast from 'react-hot-toast';
+import ContactSupportModal from '../components/ContactSupportModal.jsx';
 import { useSignIn, useSignUp, useUser, useAuth, AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 
 const GoogleIcon = () => (
