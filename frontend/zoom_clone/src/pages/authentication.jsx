@@ -254,7 +254,7 @@ export default function Authentication() {
   }
 
   const hasAppToken = Boolean(localStorage.getItem('token'));
-  if (!isAuthReady) {
+  if (isSignedIn && !hasAppToken && !isAuthReady) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa' }}>
         <Box sx={{ textAlign: 'center' }}>

@@ -141,19 +141,26 @@ export const AuthProvider = ({children}) => {
     };
 
     const handleClerkLogin = useCallback(async (email, name, clerkId, role = "student") => {
-        const request = await client.post("/clerk-login", {
+        const payload = {
             email,
             name,
             clerkId,
             googleId: clerkId,
             role
-        });
+        };
+        let request;
+        try {
+            request = await client.post("/clerk-login", payload);
+        } catch (err) {
+            // Fallback to /google-login if /clerk-login is not yet deployed on server
+            request = await client.post("/google-login", payload);
+        }
         if (request.status === 200 && request.data?.token) {
             persistSession(request.data.token, request.data.user);
             return request.data.message || "Logged in successfully!";
         }
         throw new Error(request.data?.message || "Authentication failed");
-    }, []);
+    }, [persistSession]);
 
     const handleGoogleLogin = handleClerkLogin;
 
@@ -339,18 +346,7 @@ export const AuthProvider = ({children}) => {
                     throw new Error("Clerk account has no email address");
                 }
 
-                let lastError = null;
-                for (let attempt = 0; attempt < 3; attempt += 1) {
-                    try {
-                        await handleClerkLogin(email, name, clerkId, "student");
-                        lastError = null;
-                        break;
-                    } catch (error) {
-                        lastError = error;
-                        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
-                    }
-                }
-                if (lastError) throw lastError;
+                await handleClerkLogin(email, name, clerkId, "student");
             } catch (error) {
                 console.error("Failed to sync Clerk session with backend", error);
                 clerkSyncRef.current = false;
