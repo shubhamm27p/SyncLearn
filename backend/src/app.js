@@ -129,6 +129,11 @@ app.use("/api/v1/webhooks", webhookRouter);
 app.use(express.json({limit: "49kb"}));
 app.use(express.urlencoded({limit: "40kb", extended: true}));
 
+// Base route for uptime monitoring
+app.get("/", (req, res) => {
+    res.status(200).json({ status: "ok", message: "Sync Learn Backend is running" });
+});
+
 // Routes
 app.use("/api/v1/users", userRouter);
 
